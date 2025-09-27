@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -117,56 +118,108 @@ try {
   alert('ไม่สามารถเชื่อมต่อกับ Firebase ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง');
 }
 
-const DB_COLLECTION = 'dashboards';
-const DB_DOC_ID = 'mainDashboard';
+// กำหนดชื่อ Collections แยกตามเมนู
+const COLLECTIONS = {
+  KPI: 'kpi_reports',
+  CONSUMABLES: 'consumables_reports',
+  OT: 'ot_reports',
+  LEAVE: 'leave_reports',
+  ACCIDENT: 'accident_reports',
+  WORKLOAD: 'workload_reports'
+};
 
-const defaultDatabase = {
-  kpiData: {
+// โครงสร้างข้อมูลเริ่มต้นสำหรับแต่ละเมนู
+const defaultData = {
+  kpi: {
     kpis: [],
     chartData: [],
     tableRows: [],
+    lastUpdated: new Date()
   },
-  consumablesData: {
+  consumables: {
     tableData: [],
     kpis: [],
     chartData: [],
+    lastUpdated: new Date()
   },
-  otData: {
+  ot: {
     tableData: [],
     kpis: [],
     chartData: [],
+    lastUpdated: new Date()
   },
-  leaveData: {
+  leave: {
     tableData: [],
     kpis: [],
     chartData: [],
+    lastUpdated: new Date()
   },
-  accidentData: {
+  accident: {
     tableData: [],
     kpis: [],
     chartData: [],
+    lastUpdated: new Date()
   },
-  workloadData: {
-    data: []
+  workload: {
+    data: [],
+    lastUpdated: new Date()
   }
 };
 
 const firebaseService = {
-  getDashboardDocRef: () => doc(db, DB_COLLECTION, DB_DOC_ID),
-  
-  // Creates the document if it doesn't exist with default data
-  initializeDocument: async () => {
-    const docRef = firebaseService.getDashboardDocRef();
-    await setDoc(docRef, defaultDatabase);
-    return defaultDatabase;
+  // ฟังก์ชันสำหรับสร้าง document ID แบบอัตโนมัติตามเดือนและปี
+  generateDocId: () => {
+    const now = new Date();
+    return `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
   },
 
-  updateKpi: (data) => updateDoc(firebaseService.getDashboardDocRef(), { kpiData: data }),
-  updateConsumables: (data) => updateDoc(firebaseService.getDashboardDocRef(), { consumablesData: data }),
-  updateOt: (data) => updateDoc(firebaseService.getDashboardDocRef(), { otData: data }),
-  updateLeave: (data) => updateDoc(firebaseService.getDashboardDocRef(), { leaveData: data }),
-  updateAccident: (data) => updateDoc(firebaseService.getDashboardDocRef(), { accidentData: data }),
-  updateWorkload: (data) => updateDoc(firebaseService.getDashboardDocRef(), { workloadData: data }),
+  // ฟังก์ชันสำหรับดึง reference ของ document
+  getDocRef: (collection, docId = firebaseService.generateDocId()) => {
+    return doc(db, collection, docId);
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล KPI
+  updateKpi: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.KPI);
+    await setDoc(docRef, { ...defaultData.kpi, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลวัสดุสิ้นเปลือง
+  updateConsumables: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.CONSUMABLES);
+    await setDoc(docRef, { ...defaultData.consumables, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล OT
+  updateOt: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.OT);
+    await setDoc(docRef, { ...defaultData.ot, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลการลา
+  updateLeave: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.LEAVE);
+    await setDoc(docRef, { ...defaultData.leave, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลอุบัติเหตุ
+  updateAccident: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.ACCIDENT);
+    await setDoc(docRef, { ...defaultData.accident, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล Workload
+  updateWorkload: async (data) => {
+    const docRef = firebaseService.getDocRef(COLLECTIONS.WORKLOAD);
+    await setDoc(docRef, { ...defaultData.workload, ...data, lastUpdated: new Date() });
+  },
+
+  // ฟังก์ชันสำหรับดึงข้อมูลล่าสุดของแต่ละเมนู
+  getLatestData: async (collection) => {
+    const docRef = firebaseService.getDocRef(collection);
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? docSnap.data() : null;
+  }
 };
 
 // ===================================================
@@ -2225,96 +2278,105 @@ const App = () => {
   }, [activePage]);
 
   useEffect(() => {
-    const docRef = firebaseService.getDashboardDocRef();
+    if (!db) {
+        setConnectionStatus('error');
+        setConnectionError({
+            code: 'firebase-init-failed',
+            message: 'Firebase could not be initialized.',
+            suggestion: t('suggestionDefault')
+        });
+        setIsLoading(false);
+        return;
+    }
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      try {
-        setConnectionStatus('connected');
-        setConnectionError(null); // Clear any previous errors on successful connection
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const sanitizedData = sanitizeData(data);
-
-          if(sanitizedData) {
-              setKpis(sanitizedData.kpiData?.kpis || []);
-              setChartData(sanitizedData.kpiData?.chartData || []);
-              setTableRows(sanitizedData.kpiData?.tableRows || []);
-              setConsumablesTableData(sanitizedData.consumablesData?.tableData || []);
-              setConsumablesKpis(sanitizedData.consumablesData?.kpis || []);
-              setConsumablesChartData(sanitizedData.consumablesData?.chartData || []);
-              setOtTableData(sanitizedData.otData?.tableData || []);
-              setOtKpis(sanitizedData.otData?.kpis || []);
-              setOtChartData(sanitizedData.otData?.chartData || []);
-              setLeaveTableData(sanitizedData.leaveData?.tableData || []);
-              setLeaveKpis(sanitizedData.leaveData?.kpis || []);
-              setLeaveChartData(sanitizedData.leaveData?.chartData || []);
-              setAccidentTableData(sanitizedData.accidentData?.tableData || []);
-              setAccidentKpis(sanitizedData.accidentData?.kpis || []);
-              setAccidentChartData(sanitizedData.accidentData?.chartData || []);
-              setWorkloadReportData(sanitizedData.workloadData?.data || []);
-          }
-        } else {
-          console.log("Document does not exist, initializing with default data.");
-          // Set local state immediately for better UX while the doc is created in the background
-          const sanitizedDefault = sanitizeData(defaultDatabase);
-          if (sanitizedDefault) {
-              setKpis(sanitizedDefault.kpiData?.kpis || []);
-              setChartData(sanitizedDefault.kpiData?.chartData || []);
-              setTableRows(sanitizedDefault.kpiData?.tableRows || []);
-              setConsumablesTableData(sanitizedDefault.consumablesData?.tableData || []);
-              setConsumablesKpis(sanitizedDefault.consumablesData?.kpis || []);
-              setConsumablesChartData(sanitizedDefault.consumablesData?.chartData || []);
-              setOtTableData(sanitizedDefault.otData?.tableData || []);
-              setOtKpis(sanitizedDefault.otData?.kpis || []);
-              setOtChartData(sanitizedDefault.otData?.chartData || []);
-              setLeaveTableData(sanitizedDefault.leaveData?.tableData || []);
-              setLeaveKpis(sanitizedDefault.leaveData?.kpis || []);
-              setLeaveChartData(sanitizedDefault.leaveData?.chartData || []);
-              setAccidentTableData(sanitizedDefault.accidentData?.tableData || []);
-              setAccidentKpis(sanitizedDefault.accidentData?.kpis || []);
-              setAccidentChartData(sanitizedDefault.accidentData?.chartData || []);
-              setWorkloadReportData(sanitizedDefault.workloadData?.data || []);
-          }
-          firebaseService.initializeDocument();
+    const reportConfigs = [
+        {
+            collection: COLLECTIONS.KPI,
+            setters: (data) => {
+                setKpis(data?.kpis || []);
+                setChartData(data?.chartData || []);
+                setTableRows(data?.tableRows || []);
+            },
+            default: defaultData.kpi
+        },
+        {
+            collection: COLLECTIONS.CONSUMABLES,
+            setters: (data) => {
+                setConsumablesTableData(data?.tableData || []);
+                setConsumablesKpis(data?.kpis || []);
+                setConsumablesChartData(data?.chartData || []);
+            },
+            default: defaultData.consumables
+        },
+        {
+            collection: COLLECTIONS.OT,
+            setters: (data) => {
+                setOtTableData(data?.tableData || []);
+                setOtKpis(data?.kpis || []);
+                setOtChartData(data?.chartData || []);
+            },
+            default: defaultData.ot
+        },
+        {
+            collection: COLLECTIONS.LEAVE,
+            setters: (data) => {
+                setLeaveTableData(data?.tableData || []);
+                setLeaveKpis(data?.kpis || []);
+                setLeaveChartData(data?.chartData || []);
+            },
+            default: defaultData.leave
+        },
+        {
+            collection: COLLECTIONS.ACCIDENT,
+            setters: (data) => {
+                setAccidentTableData(data?.tableData || []);
+                setAccidentKpis(data?.kpis || []);
+                setAccidentChartData(data?.chartData || []);
+            },
+            default: defaultData.accident
+        },
+        {
+            collection: COLLECTIONS.WORKLOAD,
+            setters: (data) => {
+                setWorkloadReportData(data?.data || []);
+            },
+            default: defaultData.workload
         }
-      } catch (e) {
-          console.error("An error occurred while processing Firestore data:", e);
-          setConnectionStatus('error');
-      } finally {
-          setIsLoading(false);
-      }
-    }, (error) => {
-      setConnectionStatus('error');
-      console.error("Firebase Snapshot Error:", { 
-        code: error.code, 
-        message: error.message, 
-        name: error.name 
-      });
+    ];
 
-      let suggestionKey;
-      switch (error.code) {
-          case 'permission-denied':
-              suggestionKey = 'suggestionPermissionDenied';
-              break;
-          case 'unavailable':
-          case 'deadline-exceeded':
-              suggestionKey = 'suggestionUnavailable';
-              break;
-          default:
-              suggestionKey = 'suggestionDefault';
-      }
+    const unsubscribes = reportConfigs.map(({ collection, setters, default: defaultState }) => {
+        const docRef = firebaseService.getDocRef(collection);
+        return onSnapshot(docRef, (docSnap) => {
+            if (connectionStatus !== 'connected') setConnectionStatus('connected');
+            if (connectionError) setConnectionError(null);
 
-      setConnectionError({
-          code: error.code,
-          message: error.message,
-          suggestion: t(suggestionKey)
-      });
-      setIsLoading(false);
+            if (docSnap.exists()) {
+                setters(sanitizeData(docSnap.data()));
+            } else {
+                console.log(`Document for ${collection} does not exist, using default data.`);
+                setters(sanitizeData(defaultState));
+            }
+        }, (error) => {
+            setConnectionStatus('error');
+            console.error(`Firebase Snapshot Error on ${collection}:`, { code: error.code, message: error.message });
+
+            let suggestionKey;
+            switch (error.code) {
+                case 'permission-denied': suggestionKey = 'suggestionPermissionDenied'; break;
+                case 'unavailable':
+                case 'deadline-exceeded': suggestionKey = 'suggestionUnavailable'; break;
+                default: suggestionKey = 'suggestionDefault';
+            }
+            setConnectionError({ code: error.code, message: error.message, suggestion: t(suggestionKey) });
+            setIsLoading(false); // Stop loading on the first error
+        });
     });
+    
+    setIsLoading(false);
 
-    // Cleanup subscription on unmount
-    return () => unsubscribe();
-  }, [t]);
+    // Cleanup all subscriptions on unmount
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, [t]); // Depend on `t` for error message translations.
 
   const handleNavigate = (page) => {
     setActivePage(page);
