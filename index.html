@@ -62,7 +62,7 @@
 // Import external dependencies
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, LineChart, Line, Legend } from 'recharts';
 import { read, utils } from 'xlsx';
 
 
@@ -77,6 +77,7 @@ const translations = {
         'otReport': 'OT Report',
         'leaveReport': 'Leave Report',
         'accidentReport': 'Accident Report',
+        'workloadReport': 'Workload Report',
         'reports': 'Reports',
         'documents': 'Documents',
         'settings': 'Settings',
@@ -134,6 +135,15 @@ const translations = {
         'accidentsByDepartment': 'Accidents by Department',
         'accidentDetails': 'Accident Details',
         'searchAccidents': 'Search accidents...',
+        // Workload Report
+        'workloadByProduct': 'Workload by Product (Ton/Person/Hr.)',
+        'avgWorkloadRaw': 'Avg. Ton/Hr (Raw Material)',
+        'avgWorkloadCoil': 'Avg. Ton/Hr (Coil)',
+        'avgWorkloadFilm': 'Avg. Ton/Hr (Film&Scrap)',
+        'workloadDetails': 'Workload Details',
+        'product': 'Product',
+        'description': 'Description',
+        'unit': 'Unit',
         // Placeholder
         'underConstruction': 'This page is under construction.',
         // General
@@ -147,6 +157,7 @@ const translations = {
         'otReport': 'รายงาน OT',
         'leaveReport': 'รายงานการลา',
         'accidentReport': 'รายงานอุบัติเหตุ',
+        'workloadReport': 'ปริมาณการทำงานต่อคน',
         'reports': 'รายงานอื่นๆ',
         'documents': 'เอกสาร',
         'settings': 'ตั้งค่า',
@@ -204,6 +215,15 @@ const translations = {
         'accidentsByDepartment': 'อุบัติเหตุตามส่วนงาน',
         'accidentDetails': 'รายละเอียดอุบัติเหตุ',
         'searchAccidents': 'ค้นหาอุบัติเหตุ...',
+        // Workload Report
+        'workloadByProduct': 'ปริมาณงานตามผลิตภัณฑ์ (ตัน/คน/ชม.)',
+        'avgWorkloadRaw': 'เฉลี่ย Ton/Hr (Raw Material)',
+        'avgWorkloadCoil': 'เฉลี่ย Ton/Hr (Coil)',
+        'avgWorkloadFilm': 'เฉลี่ย Ton/Hr (Film&Scrap)',
+        'workloadDetails': 'รายละเอียดปริมาณงาน',
+        'product': 'ผลิตภัณฑ์',
+        'description': 'คำอธิบาย',
+        'unit': 'หน่วย',
         // Placeholder
         'underConstruction': 'หน้านี้กำลังอยู่ระหว่างการพัฒนา',
         // General
@@ -318,6 +338,11 @@ const UsersIcon = (props) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.226A6.668 6.668 0 0 0 12 14.25a6.668 6.668 0 0 0-3.468-.985m7.5 0a9.094 9.094 0 0 1 3.741-.479 3 3 0 0 1-4.682-2.72M12 12.75a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0 0a9.094 9.094 0 0 0-3.741-.479 3 3 0 0 0-4.682-2.72M6.344 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M12 12.75a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
   </svg>
 );
+const UserGroupIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.226A6.668 6.668 0 0 0 12 14.25a6.668 6.668 0 0 0-3.468-.985m7.5 0a9.094 9.094 0 0 1 3.741-.479 3 3 0 0 1-4.682-2.72m-12 2.226A6.668 6.668 0 0 1 12 14.25a6.668 6.668 0 0 1 3.468-.985m-7.5 0a9.094 9.094 0 0 0-3.741-.479 3 3 0 0 0 4.682-2.72M9 12.75a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0 0a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1-4.682-2.72m0 0a9.094 9.094 0 0 0 3.741.479 3 3 0 0 0-4.682 2.72m7.5-2.226A6.668 6.668 0 0 0 12 14.25a6.668 6.668 0 0 0-3.468-.985" />
+  </svg>
+);
 const HomeIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" />
@@ -357,7 +382,7 @@ const ArrowUpTrayIcon = (props) => (
 );
 const ClipboardDocumentListIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75c0-.231-.035-.454-.1-.664M18.75 19.5H5.25A2.25 2.25 0 0 1 3 17.25V9h16.5v8.25c0 1.242-1.008 2.25-2.25 2.25Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 4.8424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75c0-.231-.035-.454-.1-.664M18.75 19.5H5.25A2.25 2.25 0 0 1 3 17.25V9h16.5v8.25c0 1.242-1.008 2.25-2.25 2.25Z" />
     </svg>
 );
 const ClockIcon = (props) => (
@@ -478,6 +503,95 @@ const tableData = [
     result: 'PASS',
   },
 ];
+const parseValue = (val) => {
+    if (val === '-' || val === '#DIV/0!' || val == null || String(val).trim() === '') return null;
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+        const num = parseFloat(val.replace(/,/g, ''));
+        return isNaN(num) ? null : num;
+    }
+    return null;
+};
+const workloadData = [
+    {
+        product: 'Raw Material',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [73, 61, 212, 61, 424, 118, 91, 204, null, null, null, null], average: 155.5, min: 61, max: 424 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [81, 94, 47, 31, 67, 68, 83, 50, null, null, null, null], average: 65.13, min: 31, max: 94 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [4941, 4302, 5161, 2669, 3727, 3898, 4514, 4176, null, null, null, null], average: 4173.5, min: 2669, max: 5161 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [5461, 5328, 5283, 3978, 4412, 4333, 5247, 4736, null, null, null, null], average: 4847.25, min: 3978, max: 5461 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [10556, 9785, 10703, 6739, 8630, 8417, 9935, 9166, 0, 0, 0, 0], average: 6721, min: 0, max: 10703 },
+            { description: 'Manpower', isSubRow: false, unit: 'Person', values: [14, 14, 14, 14, 14, 14, 14, 14, null, null, null, null], average: 14, min: 14, max: 14 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [2912, 2688, 2800, 2464, 2688, 2688, 2912, 2800, 0, 0, 0, 0], average: 1995.64, min: 0, max: 2912 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [778.3, 743, 818, 615, 695, 710, 699, 736, null, null, null, null], average: 724.29, min: 615, max: 818 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [3690.3, 3431, 3618, 3079, 3383, 3398, 3611, 3536, 0, 0, 0, 0], average: 2522.39, min: 0, max: 3690.3 },
+        ]
+    },
+    {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [0.02, 0.02, 0.06, 0.02, 0.13, 0.03, 0.03, 0.06, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.02, 0.03, 0.01, 0.01, 0.02, 0.02, 0.02, 0.01, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [1.34, 1.25, 1.43, 0.87, 1.1, 1.15, 1.25, 1.18, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [1.48, 1.55, 1.46, 1.29, 1.3, 1.28, 1.45, 1.34, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [2.86, 2.85, 2.96, 2.19, 2.55, 2.48, 2.75, 2.59, null, null, null, null], average: null, min: null, max: null }
+        ]
+    },
+    {
+        product: 'Coil',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [52759.08, 54903.78, 52647.99, 51072.26, 46240.49, 49378.8, 48592.98, 64070.97, null, null, null, null], average: 52458.29, min: 46240.49, max: 64070.97 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [1180.53, 3168.55, 1008.65, 691.96, 695.07, 420.98, 229.19, 351.44, null, null, null, null], average: 968.3, min: 229.19, max: 3168.55 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [45.68, 83.97, 100.75, 33.87, 57.1, 123.29, 90.96, 89.86, null, null, null, null], average: 78.19, min: 33.87, max: 123.29 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [52136.43, 58890.62, 57909.8, 45454.52, 49189.23, 53805.07, 54331.62, 54650.72, null, null, null, null], average: 53296, min: 45454.52, max: 58890.62 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [106121.72, 117046.92, 111667.19, 97252.61, 96181.89, 103728.14, 103244.75, 119162.99, 0, 0, 0, 0], average: 77673.29, min: 0, max: 119162.99 },
+            { description: 'Manpower', isSubRow: false, unit: 'People', values: [21, 20, 20, 20, 20, 20, 20, 19, null, null, null, null], average: 20, min: 19, max: 21 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [4368, 3840, 4000, 3520, 3840, 3840, 4160, 3800, 0, 0, 0, 0], average: 2851.64, min: 0, max: 4368 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [1124.55, 922, 945, 868, 1014, 1122, 1043.55, 940, null, null, null, null], average: 997.39, min: 868, max: 1124.55 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [5492.55, 4762, 4945, 4388, 4854, 4962, 5203.55, 4740, 0, 0, 0, 0], average: 3577.01, min: 0, max: 5492.55 },
+        ]
+    },
+    {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [9.61, 11.53, 10.65, 11.64, 9.53, 9.95, 9.34, 13.52, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.21, 0.67, 0.2, 0.16, 0.14, 0.08, 0.04, 0.07, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [0.01, 0.02, 0.02, 0.01, 0.01, 0.02, 0.02, 0.02, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [9.49, 12.37, 11.71, 10.36, 10.13, 10.84, 10.44, 11.53, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [19.32, 24.58, 22.58, 22.16, 19.81, 20.9, 19.84, 25.14, null, null, null, null], average: null, min: null, max: null }
+        ]
+    },
+    {
+        product: 'Film&Scrap',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [null, 554, 2987, 401, null, null, null, null, null, null, null, null], average: 492.75, min: 0, max: 2987 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [5867.25, 5099.27, 5516.73, 3934.92, 4400.15, 4359.65, 4767.1, 6146.9, null, null, null, null], average: 5011.5, min: 3934.92, max: 6146.9 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [31864.21, 34016.91, 30480.65, 29577.71, 31210.2, 33778.1, 35968.9, 33475.86, null, null, null, null], average: 32546.57, min: 29577.71, max: 35968.9 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [27612.99, 28365.85, 26887.14, 25465.35, 27796.17, 31288.83, 33208.52, 27706.66, null, null, null, null], average: 28541.44, min: 25465.35, max: 33208.52 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [65344.45, 68036.03, 65871.52, 59378.98, 63406.52, 69426.58, 73944.52, 67329.42, 0, 0, 0, 0], average: 48430.73, min: 0, max: 73944.52 },
+            { description: 'Manpower', isSubRow: false, unit: 'Person', values: [27, 26, 25, 26, 26, 26, 27, 27, null, null, null, null], average: 26.25, min: 25, max: 27 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [5616, 4992, 5000, 4576, 4992, 4992, 5616, 5400, 0, 0, 0, 0], average: 3744, min: 0, max: 5616 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [1882, 1485, 1777, 1393, 1738, 1898, 1921.15, 1727, null, null, null, null], average: 1727.64, min: 1393, max: 1921.15 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [7498, 6477, 6777, 5969, 6730, 6890, 7537.15, 7127, 0, 0, 0, 0], average: 5000.47, min: 0, max: 7537.15 },
+        ]
+    },
+     {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [0, 0.09, 0.44, 0.07, 0, 0, 0, 0, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.78, 0.79, 0.81, 0.66, 0.65, 0.63, 0.63, 0.86, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [4.25, 5.25, 4.5, 4.96, 4.64, 4.9, 4.77, 4.7, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [3.68, 4.38, 3.97, 4.27, 4.13, 4.54, 4.41, 3.89, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [8.71, 10.5, 9.72, 9.95, 9.42, 10.08, 9.81, 9.45, null, null, null, null], average: null, min: null, max: null }
+        ]
+    }
+];
 // ===================================================
 // END: constants.tsx
 // ===================================================
@@ -491,6 +605,7 @@ const IconComponent = ({ name, className }) => {
         case 'CurrencyDollarIcon': return <CurrencyDollarIcon className={className} />;
         case 'ShoppingCartIcon': return <ShoppingCartIcon className={className} />;
         case 'UsersIcon': return <UsersIcon className={className} />;
+        case 'UserGroupIcon': return <UserGroupIcon className={className} />;
         case 'ChartBarIcon': return <ChartBarIcon className={className} />;
         case 'ArchiveBoxIcon': return <ArchiveBoxIcon className={className} />;
         case 'BuildingOfficeIcon': return <BuildingOfficeIcon className={className} />;
@@ -1533,6 +1648,180 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
 
 
 // ===================================================
+// START: components/WorkloadReport.tsx
+// ===================================================
+const WorkloadReport = ({ data, theme, onFileUpload }) => {
+    const { t } = useTranslation();
+    const fileInputRef = useRef(null);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const gridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
+    const tickColor = theme === 'dark' ? '#94A3B8' : '#64748B';
+
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+    };
+    
+    const { summaryKpis, chartData } = useMemo(() => {
+        const getTonPerHrSumForProduct = (productIndex) => {
+            if (productIndex === -1 || !data[productIndex + 1]) return [];
+            const tonHrSection = data[productIndex + 1];
+            if (tonHrSection && tonHrSection.product === 'Ton/Person/Hr.' && tonHrSection.isSubProduct) {
+                const sumRow = tonHrSection.rows.find(r => r.description === 'Sum');
+                return sumRow ? sumRow.values : [];
+            }
+            return [];
+        };
+
+        const rawMaterialIndex = data.findIndex(p => p.product === 'Raw Material');
+        const coilIndex = data.findIndex(p => p.product === 'Coil');
+        const filmScrapIndex = data.findIndex(p => p.product === 'Film&Scrap');
+        
+        const rawMaterialTonHr = getTonPerHrSumForProduct(rawMaterialIndex);
+        const coilTonHr = getTonPerHrSumForProduct(coilIndex);
+        const filmTonHr = getTonPerHrSumForProduct(filmScrapIndex);
+
+        const avg = (arr) => {
+            if (!arr) return 0;
+            const filtered = arr.filter(v => v !== null);
+            if(filtered.length === 0) return 0;
+            return filtered.reduce((a, b) => a + b, 0) / filtered.length;
+        };
+        
+        const _summaryKpis = [
+            { title: t('avgWorkloadRaw'), value: avg(rawMaterialTonHr).toFixed(2), icon: 'UserGroupIcon', color: 'text-brand-success' },
+            { title: t('avgWorkloadCoil'), value: avg(coilTonHr).toFixed(2), icon: 'UserGroupIcon', color: 'text-brand-primary' },
+            { title: t('avgWorkloadFilm'), value: avg(filmTonHr).toFixed(2), icon: 'UserGroupIcon', color: 'text-brand-warning' },
+        ];
+
+        const _chartData = monthNames.map((month, index) => ({
+            month,
+            'Raw Material': rawMaterialTonHr[index] || 0,
+            'Coil': coilTonHr[index] || 0,
+            'Film & Scrap': filmTonHr[index] || 0,
+        }));
+
+        return { summaryKpis: _summaryKpis, chartData: _chartData };
+
+    }, [data, t]);
+
+
+    const formatNumber = (num) => {
+        if (num === null || num === undefined) return '-';
+        return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    return (
+        <div className="container mx-auto flex flex-col gap-8">
+            <div className="flex justify-end items-center">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Workload Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {summaryKpis.map((kpi, index) => (
+                    <KPICard
+                        key={index}
+                        title={kpi.title}
+                        value={kpi.value}
+                        icon={kpi.icon}
+                        color={kpi.color}
+                    />
+                ))}
+            </div>
+             <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 h-[480px] shadow-lg">
+                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-6">{t('workloadByProduct')}</h3>
+                <ResponsiveContainer width="100%" height="90%">
+                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke={gridColor}/>
+                        <XAxis dataKey="month" stroke={tickColor} tick={{ fill: tickColor }} />
+                        <YAxis stroke={tickColor} tick={{ fill: tickColor }}/>
+                        <Tooltip contentStyle={{
+                            backgroundColor: theme === 'dark' ? '#1E293B' : '#FFFFFF',
+                            borderColor: theme === 'dark' ? '#334155' : '#E2E8F0',
+                            color: theme === 'dark' ? '#F8FAFC' : '#0F172A'
+                        }}/>
+                        <Legend wrapperStyle={{ color: tickColor }} />
+                        <Line type="monotone" dataKey="Raw Material" stroke="#10B981" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Coil" stroke="#6366F1" strokeWidth={2} />
+                        <Line type="monotone" dataKey="Film & Scrap" stroke="#F59E0B" strokeWidth={2} />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+            <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                 <div className="p-6 border-b border-light-border dark:border-dark-border">
+                    <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('workloadDetails')}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left min-w-[1600px]">
+                        <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                            <tr className="border-b border-light-border dark:border-dark-border">
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase w-1/5">{t('product')}</th>
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase w-1/4">{t('description')}</th>
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase w-[80px]">{t('unit')}</th>
+                                {monthNames.map(m => <th key={m} className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{m}</th>)}
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">AVERAGE</th>
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">MIN</th>
+                                <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">MAX</th>
+                            </tr>
+                        </thead>
+                        <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                           {data.map((productSection, sectionIndex) => (
+                                <React.Fragment key={sectionIndex}>
+                                    {!productSection.isSubProduct && (
+                                        <tr className="bg-slate-50 dark:bg-dark-bg/50">
+                                            <td colSpan={18} className="p-4 font-bold text-lg text-brand-primary">
+                                                {productSection.product}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {productSection.rows.map((row, rowIndex) => (
+                                        <tr key={`${sectionIndex}-${rowIndex}`} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                             <td>
+                                                {productSection.isSubProduct && rowIndex === 0 &&
+                                                    <div className="p-4 font-bold text-light-text-primary dark:text-dark-text-primary">{productSection.product}</div>
+                                                }
+                                            </td>
+                                            <td className={`p-4 text-sm ${row.isSubRow ? 'pl-8' : 'font-semibold'} text-light-text-primary dark:text-dark-text-primary`}>{row.description}</td>
+                                            <td className="p-4 text-sm text-light-text-secondary dark:text-dark-text-secondary">{row.unit}</td>
+                                            {row.values.map((val, i) => <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right whitespace-nowrap">{formatNumber(val)}</td>)}
+                                            <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right whitespace-nowrap font-medium">{formatNumber(row.average)}</td>
+                                            <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right whitespace-nowrap font-medium">{formatNumber(row.min)}</td>
+                                            <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right whitespace-nowrap font-medium">{formatNumber(row.max)}</td>
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+// ===================================================
+// END: components/WorkloadReport.tsx
+// ===================================================
+
+// ===================================================
 // START: components/Sidebar.tsx
 // ===================================================
 const NavLink = ({ icon, text, active, onClick }) => (
@@ -1557,6 +1846,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
     { key: 'otReport', icon: <ClockIcon className="h-6 w-6" /> },
     { key: 'leaveReport', icon: <CalendarDaysIcon className="h-6 w-6" /> },
     { key: 'accidentReport', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
+    { key: 'workloadReport', icon: <UserGroupIcon className="h-6 w-6" /> },
     { key: 'reports', icon: <ChartPieIcon className="h-6 w-6" /> },
     { key: 'documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
     { key: 'settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
@@ -1724,6 +2014,7 @@ const App = () => {
   const [accidentTableData, setAccidentTableData] = useState(getInitialState('accidentTableData', []));
   const [accidentKpis, setAccidentKpis] = useState(getInitialState('accidentKpis', []));
   const [accidentChartData, setAccidentChartData] = useState(getInitialState('accidentChartData', []));
+  const [workloadReportData, setWorkloadReportData] = useState(getInitialState('workloadReportData', workloadData));
   const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -1773,6 +2064,10 @@ const App = () => {
     localStorage.setItem('accidentChartData', JSON.stringify(accidentChartData));
   }, [accidentTableData, accidentKpis, accidentChartData]);
   
+  useEffect(() => {
+    localStorage.setItem('workloadReportData', JSON.stringify(workloadReportData));
+  }, [workloadReportData]);
+
   const handleNavigate = (page) => {
     setActivePage(page);
     setIsSidebarOpen(false);
@@ -2195,6 +2490,77 @@ const App = () => {
     };
     reader.readAsBinaryString(file);
   };
+  
+  const handleWorkloadFileUpload = (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const workbookData = e.target?.result;
+                const workbook = read(workbookData, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = utils.sheet_to_json(worksheet, { header: 1, defval: null });
+
+                const newWorkloadData = [];
+                let currentProductSection = null;
+
+                json.slice(1).forEach(row => { 
+                    if (!row || row.every(cell => cell === null)) return;
+
+                    const productCell = row[0];
+                    const descriptionCell = row[1];
+
+                    if (productCell && typeof productCell === 'string' && productCell.trim() !== '') {
+                        if (currentProductSection) {
+                            newWorkloadData.push(currentProductSection);
+                        }
+                        currentProductSection = {
+                            product: productCell.trim(),
+                            isSubProduct: productCell.trim() === 'Ton/Person/Hr.',
+                            rows: []
+                        };
+                    }
+                    
+                    if (descriptionCell && typeof descriptionCell === 'string' && descriptionCell.trim() !== '' && currentProductSection) {
+                        const description = descriptionCell.trim();
+                        const values = row.slice(3, 15).map(v => parseValue(v));
+                        const average = parseValue(row[16]);
+                        const min = parseValue(row[17]);
+                        const max = parseValue(row[18]);
+
+                        const nonSubRowPrefixes = ['Sum', 'Manpower', 'Workday', 'Working Hours', 'OT'];
+                        const isSubRow = !nonSubRowPrefixes.some(prefix => description.startsWith(prefix));
+
+                        currentProductSection.rows.push({
+                            description,
+                            isSubRow,
+                            unit: row[2] || '',
+                            values,
+                            average,
+                            min,
+                            max
+                        });
+                    }
+                });
+
+                if (currentProductSection) {
+                    newWorkloadData.push(currentProductSection);
+                }
+
+                if (newWorkloadData.length > 0) {
+                    setWorkloadReportData(newWorkloadData);
+                } else {
+                    alert("Could not parse any data from the file. Please check the format.");
+                }
+
+            } catch (error) {
+                console.error("Error processing Workload Excel file:", error);
+                alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
   const renderContent = () => {
     switch (activePage) {
       case 'kpiReport':
@@ -2251,6 +2617,8 @@ const App = () => {
                   onFileUpload={handleAccidentFileUpload}
                   theme={theme}
                 />;
+      case 'workloadReport':
+        return <WorkloadReport data={workloadReportData} onFileUpload={handleWorkloadFileUpload} theme={theme} />;
       case 'reports':
         return <PlaceholderPage title={t('reports')} />;
       case 'documents':
