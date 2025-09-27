@@ -86,6 +86,8 @@ const translations = {
         // Header
         'search': 'Search...',
         'uploadKpiData': 'Upload KPI Data',
+        'shareReport': 'Share Report',
+        'loadReport': 'Load Report',
         'userName': 'Jane Doe',
         'userRole': 'Admin',
         // KPI Card
@@ -166,6 +168,8 @@ const translations = {
         // Header
         'search': 'ค้นหา...',
         'uploadKpiData': 'อัปโหลดข้อมูล KPI',
+        'shareReport': 'แชร์รายงาน',
+        'loadReport': 'โหลดรายงาน',
         'userName': 'เจน โด',
         'userRole': 'ผู้ดูแลระบบ',
         // KPI Card
@@ -413,6 +417,16 @@ const SunIcon = (props) => (
 const MoonIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+);
+const ShareIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-4.5 0V6m0 0h4.5m-4.5 0-6 6" />
+    </svg>
+);
+const ArrowDownTrayIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
     </svg>
 );
 // ===================================================
@@ -1992,18 +2006,36 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
+  const loadReportInputRef = useRef(null);
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
+
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
     if (file) {
       onFileUpload(file);
     }
   };
+
+  const handleLoadClick = () => {
+    loadReportInputRef.current?.click();
+  };
+
+  const handleLoadFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        onLoadReport(file);
+    }
+    if (event.target) {
+        event.target.value = null;
+    }
+  };
+
   return (
     <header className="bg-light-card dark:bg-dark-card border-b border-light-border dark:border-dark-border p-4 shadow-sm flex items-center justify-between">
       <div className="flex items-center">
@@ -2040,6 +2072,29 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick }) =
             </button>
           </>
         )}
+        <input
+            type="file"
+            ref={loadReportInputRef}
+            onChange={handleLoadFileChange}
+            className="hidden"
+            accept=".json"
+        />
+        <button
+          onClick={handleLoadClick}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
+          aria-label={t('loadReport')}
+          title={t('loadReport')}
+        >
+          <ArrowDownTrayIcon className="h-6 w-6" />
+        </button>
+        <button
+          onClick={onShareReport}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
+          aria-label={t('shareReport')}
+          title={t('shareReport')}
+        >
+          <ShareIcon className="h-6 w-6" />
+        </button>
         <button
           onClick={toggleTheme}
           className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
@@ -2191,6 +2246,53 @@ const App = () => {
   const handleNavigate = (page) => {
     setActivePage(page);
     setIsSidebarOpen(false);
+  };
+  
+  const handleShareReport = () => {
+    try {
+        const dbData = localStorage.getItem(DB_STORAGE_KEY);
+        if (!dbData) {
+            alert("No data available to share.");
+            return;
+        }
+        const blob = new Blob([dbData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        a.href = url;
+        a.download = `kpi-dashboard-export-${timestamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Error sharing report:", error);
+        alert("Could not share the report. An error occurred.");
+    }
+  };
+
+  const handleLoadReport = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target.result;
+            const data = JSON.parse(text);
+
+            // Basic validation
+            if (typeof data !== 'object' || data === null || !data.kpiData || !data.consumablesData) {
+                throw new Error("Invalid or corrupted file format.");
+            }
+
+            localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(data));
+            alert("Report loaded successfully! The page will now reload.");
+            window.location.reload();
+        } catch (error) {
+            console.error("Error loading report:", error);
+            alert(`Failed to load the report file. Error: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
   };
 
   const handleDashboardFileUpload = (file) => {
@@ -2785,7 +2887,15 @@ const App = () => {
         )}
       <Sidebar activePage={activePage} onNavigate={handleNavigate} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onFileUpload={handleDashboardFileUpload} activePage={activePage} theme={theme} toggleTheme={toggleTheme} onMenuClick={() => setIsSidebarOpen(true)} />
+        <Header 
+            onFileUpload={handleDashboardFileUpload} 
+            activePage={activePage} 
+            theme={theme} 
+            toggleTheme={toggleTheme} 
+            onMenuClick={() => setIsSidebarOpen(true)}
+            onShareReport={handleShareReport}
+            onLoadReport={handleLoadReport}
+        />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
         </main>
