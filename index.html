@@ -1,0 +1,2085 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Modern KPI Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              'brand-primary': '#6366F1', // Indigo 500
+              'brand-secondary': '#EC4899', // Pink 500
+              'brand-success': '#10B981', // Emerald 500
+              'brand-danger': '#EF4444', // Red 500
+              'brand-warning': '#F59E0B', // Amber 500
+              
+              // Dark Theme
+              'dark-bg': '#0F172A', // Slate 900
+              'dark-card': '#1E293B', // Slate 800
+              'dark-border': '#334155', // Slate 700
+              'dark-text-primary': '#F8FAFC', // Slate 50
+              'dark-text-secondary': '#94A3B8', // Slate 400
+
+              // Light Theme
+              'light-bg': '#F1F5F9', // Slate 100
+              'light-card': '#FFFFFF', // White
+              'light-border': '#E2E8F0', // Slate 200
+              'light-text-primary': '#0F172A', // Slate 900
+              'light-text-secondary': '#64748B', // Slate 500
+            },
+            fontFamily: {
+                sans: ['Inter', 'sans-serif'],
+            },
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "recharts/": "https://aistudiocdn.com/recharts@^3.2.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs"
+  }
+}
+</script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+  <body class="bg-light-bg text-light-text-primary dark:bg-dark-bg dark:text-dark-text-primary font-sans">
+    <div id="root"></div>
+    <script type="text/babel" data-type="module">
+// Import external dependencies
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactDOM from 'react-dom/client';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
+import { read, utils } from 'xlsx';
+
+
+// ===================================================
+// START: components/icons/Icons.tsx
+// ===================================================
+const ArchiveBoxIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+    </svg>
+);
+const BuildingOfficeIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6h1.5m-1.5 3h1.5m-1.5 3h1.5M6.75 21v-2.25a2.25 2.25 0 0 1 2.25-2.25h6a2.25 2.25 0 0 1 2.25 2.25V21m-2.25-18-2.25.002" />
+    </svg>
+);
+const ArrowTrendingDownIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+  </svg>
+);
+const ArrowTrendingUpIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 5.814 5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+  </svg>
+);
+const BellIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+  </svg>
+);
+const ChartBarIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+  </svg>
+);
+const CurrencyDollarIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+  </svg>
+);
+const MagnifyingGlassIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+  </svg>
+);
+const MinusIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
+    </svg>
+);
+const ShoppingCartIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c.51 0 .962-.343 1.087-.835l1.838-5.513a1.875 1.875 0 0 0-1.097-2.288H5.64M7.5 14.25 5.106 5.106M15 21a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 0h-5.64m5.64 0-1.03-4.125M9 21a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z" />
+  </svg>
+);
+const UsersIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m-7.5-2.226A6.668 6.668 0 0 0 12 14.25a6.668 6.668 0 0 0-3.468-.985m7.5 0a9.094 9.094 0 0 1 3.741-.479 3 3 0 0 1-4.682-2.72M12 12.75a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm0 0a9.094 9.094 0 0 0-3.741-.479 3 3 0 0 0-4.682-2.72M6.344 18.72a9.094 9.094 0 0 1-3.741-.479 3 3 0 0 1 4.682-2.72M12 12.75a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+  </svg>
+);
+const HomeIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" />
+    </svg>
+);
+const ChartPieIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
+    </svg>
+);
+const DocumentTextIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg>
+);
+const Cog6ToothIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.424.35.534.954.26 1.431l-1.296 2.247a1.125 1.125 0 0 1-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.075.124a6.57 6.57 0 0 1-.22.127c-.332.183-.582.495-.645.87l-.213 1.281c-.09.543-.56.94-1.11.94h-2.593c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 0 1-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 0 1-.26-1.431l1.296-2.247a1.125 1.125 0 0 1 1.37-.49l1.217.456c.355.133.75.072 1.075-.124.072-.044.146-.087.22-.127.332-.183.582-.495.645-.87l.213-1.281Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+    </svg>
+);
+const QuestionMarkCircleIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+    </svg>
+);
+const BoltIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+  </svg>
+);
+const ArrowUpTrayIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+    </svg>
+);
+const ClipboardDocumentListIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75c0-.231-.035-.454-.1-.664M18.75 19.5H5.25A2.25 2.25 0 0 1 3 17.25V9h16.5v8.25c0 1.242-1.008 2.25-2.25 2.25Z" />
+    </svg>
+);
+const ClockIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+);
+const CalendarDaysIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0h18M-4.5 12h22.5" />
+    </svg>
+);
+const ClipboardDocumentCheckIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.125 2.25h-4.5c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125v-9M10.125 2.25h.375a9 9 0 0 1 9 9v.375M10.125 2.25A3.375 3.375 0 0 1 13.5 5.625v1.5c0 .621.504 1.125 1.125 1.125h1.5a3.375 3.375 0 0 1 3.375 3.375M9 15l2.25 2.25L15 12" />
+    </svg>
+);
+const ExclamationTriangleIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+);
+const SunIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z" />
+    </svg>
+);
+const MoonIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
+    </svg>
+);
+// ===================================================
+// END: components/icons/Icons.tsx
+// ===================================================
+
+
+// ===================================================
+// START: constants.tsx
+// ===================================================
+const kpiData = [
+  {
+    title: 'Total Revenue',
+    value: '$48,329.50',
+    trend: '+12.5%',
+    trendDirection: 'up',
+    icon: 'CurrencyDollarIcon',
+    color: 'text-brand-success',
+  },
+  {
+    title: 'Total Sales',
+    value: '12,834',
+    trend: '+8.2%',
+    trendDirection: 'up',
+    icon: 'ShoppingCartIcon',
+    color: 'text-brand-primary',
+  },
+  {
+    title: 'New Customers',
+    value: '849',
+    trend: '-1.8%',
+    trendDirection: 'down',
+    icon: 'UsersIcon',
+    color: 'text-brand-warning',
+  },
+  {
+    title: 'Conversion Rate',
+    value: '4.75%',
+    trend: '+0.5%',
+    trendDirection: 'up',
+    icon: 'ChartBarIcon',
+    color: 'text-brand-secondary',
+  },
+];
+const mainChartData = [
+    { name: 'Jan', value: 2400 },
+    { name: 'Feb', value: 3100 },
+    { name: 'Mar', value: 2900 },
+    { name: 'Apr', value: 4200 },
+    { name: 'May', value: 3800 },
+    { name: 'Jun', value: 5100 },
+    { name: 'Jul', value: 4900 },
+    { name: 'Aug', value: 5800 },
+    { name: 'Sep', value: 5300 },
+    { name: 'Oct', value: 6400 },
+    { name: 'Nov', value: 7200 },
+    { name: 'Dec', value: 8100 },
+];
+const tableData = [
+  {
+    kpi: { title: 'Premium Wireless Headphones', measurement: 'Electronics' },
+    target: '1500 sales',
+    score: '1250',
+    result: 'In Progress',
+  },
+  {
+    kpi: { title: 'Organic Matcha Green Tea', measurement: 'Groceries' },
+    target: '1000 sales',
+    score: '980',
+    result: 'In Progress',
+  },
+  {
+    kpi: { title: 'Smart Fitness Tracker', measurement: 'Wearables' },
+    target: '800 sales',
+    score: '820',
+    result: 'PASS',
+  },
+  {
+    kpi: { title: 'Ergonomic Office Chair', measurement: 'Furniture' },
+    target: '500 sales',
+    score: '450',
+    result: 'In Progress',
+  },
+    {
+    kpi: { title: 'Cold Brew Coffee Maker', measurement: 'Home Goods' },
+    target: '300 sales',
+    score: '310',
+    result: 'PASS',
+  },
+];
+// ===================================================
+// END: constants.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/KPICard.tsx
+// ===================================================
+const IconComponent = ({ name, className }) => {
+    switch (name) {
+        case 'CurrencyDollarIcon': return <CurrencyDollarIcon className={className} />;
+        case 'ShoppingCartIcon': return <ShoppingCartIcon className={className} />;
+        case 'UsersIcon': return <UsersIcon className={className} />;
+        case 'ChartBarIcon': return <ChartBarIcon className={className} />;
+        case 'ArchiveBoxIcon': return <ArchiveBoxIcon className={className} />;
+        case 'BuildingOfficeIcon': return <BuildingOfficeIcon className={className} />;
+        case 'DocumentTextIcon': return <DocumentTextIcon className={className} />;
+        case 'ClockIcon': return <ClockIcon className={className} />;
+        case 'ClipboardDocumentCheckIcon': return <ClipboardDocumentCheckIcon className={className} />;
+        case 'ExclamationTriangleIcon': return <ExclamationTriangleIcon className={className} />;
+        default: return null;
+    }
+};
+const KPICard = ({ title, value, trend, trendDirection = 'neutral', icon, color }) => {
+  const TrendIcon = () => {
+    switch (trendDirection) {
+      case 'up':
+        return <ArrowTrendingUpIcon className="h-5 w-5 text-brand-success" />;
+      case 'down':
+        return <ArrowTrendingDownIcon className="h-5 w-5 text-brand-danger" />;
+      default:
+        return <MinusIcon className="h-5 w-5 text-light-text-secondary dark:text-dark-text-secondary" />;
+    }
+  };
+  const trendColor = trendDirection === 'up' ? 'text-brand-success' : trendDirection === 'down' ? 'text-brand-danger' : 'text-light-text-secondary dark:text-dark-text-secondary';
+  return (
+    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 flex flex-col gap-4 transform hover:-translate-y-1 transition-transform duration-300 shadow-lg">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium text-light-text-secondary dark:text-dark-text-secondary">{title}</h3>
+        <div className={color}>
+          <IconComponent name={icon} className="h-8 w-8" />
+        </div>
+      </div>
+      <div>
+        <p className="text-4xl font-bold text-light-text-primary dark:text-dark-text-primary">{value}</p>
+      </div>
+      {trend && (
+        <div className="flex items-center gap-2 text-md">
+          <TrendIcon />
+          <span className={trendColor}>{trend}</span>
+          <span className="text-light-text-secondary dark:text-dark-text-secondary">vs last month</span>
+        </div>
+      )}
+    </div>
+  );
+};
+// ===================================================
+// END: components/KPICard.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/MainChart.tsx
+// ===================================================
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-4 border border-light-border dark:border-dark-border rounded-lg shadow-lg">
+        <p className="label text-lg font-semibold text-light-text-primary dark:text-dark-text-primary">{`${label}`}</p>
+        <p className="intro text-brand-primary">{`Value : ${payload[0].value?.toLocaleString()}`}</p>
+      </div>
+    );
+  }
+  return null;
+};
+const DataLabel = (props) => {
+    const { x, y, width, value, theme } = props;
+    const textColor = theme === 'dark' ? '#94A3B8' : '#64748B';
+    if (value === 0 || !value) {
+        return null;
+    }
+    const formattedValue = value.toLocaleString(undefined, {
+      maximumFractionDigits: 2,
+    });
+    return (
+        <text x={x + width / 2} y={y} dy={-6} fill={textColor} fontSize={12} textAnchor="middle">
+            {formattedValue}
+        </text>
+    );
+};
+const MainChart = ({ data, title = 'KPI Progress Overview', theme }) => {
+  const gridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
+  const tickColor = theme === 'dark' ? '#94A3B8' : '#64748B';
+  return (
+    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 h-[480px] shadow-lg">
+      <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-6">{title}</h3>
+      <ResponsiveContainer width="100%" height="90%">
+        <BarChart
+          data={data}
+          margin={{
+            top: 20,
+            right: 20,
+            left: 10,
+            bottom: 5,
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
+          <XAxis dataKey="name" stroke={tickColor} tick={{ fill: tickColor }} />
+          <YAxis stroke={tickColor} tick={{ fill: tickColor }} />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar dataKey="value" fill="#6366F1">
+            <LabelList dataKey="value" content={<DataLabel theme={theme} />} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
+// ===================================================
+// END: components/MainChart.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/DataTable.tsx
+// ===================================================
+const DataTable = ({ data }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const filteredData = data.filter(row => {
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return (
+      row.kpi.title.toLowerCase().includes(lowerCaseSearchTerm) ||
+      row.kpi.measurement.toLowerCase().includes(lowerCaseSearchTerm) ||
+      row.target.toLowerCase().includes(lowerCaseSearchTerm) ||
+      row.score.toLowerCase().includes(lowerCaseSearchTerm) ||
+      row.result.toLowerCase().includes(lowerCaseSearchTerm)
+    );
+  });
+  return (
+    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+      <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
+        <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">KPI Details</h3>
+        <div className="relative">
+          <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+          <input
+            type="text"
+            placeholder="Search details..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+          />
+        </div>
+      </div>
+      <div className="overflow-auto max-h-[600px]">
+        <table className="w-full text-left">
+          <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+            <tr className="border-b border-light-border dark:border-dark-border">
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">KPI</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Target</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Score</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Result</th>
+            </tr>
+          </thead>
+          <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+            {filteredData.length > 0 ? (
+              filteredData.map((row, index) => (
+              <tr key={index} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                <td className="p-4 max-w-xs">
+                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary truncate" title={row.kpi.title}>{row.kpi.title}</div>
+                  <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate" title={row.kpi.measurement}>{row.kpi.measurement}</div>
+                </td>
+                <td className="p-4">
+                    <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.target}</div>
+                </td>
+                <td className="p-4 font-medium text-light-text-primary dark:text-dark-text-primary text-right">{row.score}</td>
+                <td className="p-4 text-right">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        row.result.toUpperCase() === 'PASS' 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                        {row.result}
+                    </span>
+                </td>
+              </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                  No results found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+// ===================================================
+// END: components/DataTable.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/ConsumablesReport.tsx
+// ===================================================
+const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const fileInputRef = useRef(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+    };
+    const headers = ['Date', 'Material', 'Description', 'Qty', 'Unit', 'Price', 'Total', 'CostCtr', 'Dept'];
+    const filteredData = tableData.filter(row =>
+        Object.values(row).some(value =>
+            String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
+    const topItems = useMemo(() => {
+        if (!tableData || tableData.length === 0) {
+            return [];
+        }
+        const itemStats = {};
+        tableData.forEach(row => {
+            const materialKey = row.material;
+            if (!materialKey) return; 
+            const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, "")) || 0;
+            if (!itemStats[materialKey]) {
+                itemStats[materialKey] = {
+                    description: row.description,
+                    count: 0,
+                    total: 0
+                };
+            }
+            itemStats[materialKey].count += 1;
+            itemStats[materialKey].total += price;
+        });
+        return Object.entries(itemStats)
+            .map(([material, stats]) => ({
+                material,
+                description: stats.description,
+                count: stats.count,
+                total: stats.total,
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5);
+    }, [tableData]);
+    const departmentCosts = useMemo(() => {
+        if (!tableData || tableData.length === 0) {
+            return [];
+        }
+        const costsByDept = {};
+        tableData.forEach(row => {
+            const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, "")) || 0;
+            const dept = row.department.trim().toUpperCase();
+            if (dept) {
+                costsByDept[dept] = (costsByDept[dept] || 0) + price;
+            }
+        });
+        const resultData = [
+            { name: 'FILM', total: costsByDept['FILM'] || 0 },
+            { name: 'SSRM', total: costsByDept['SSRM'] || 0 },
+            { name: 'MH', total: costsByDept['MH'] || 0 },
+            { name: 'COIL', total: costsByDept['COIL'] || 0 },
+            { name: 'Admin & Incoming', total: (costsByDept['ADMIN'] || 0) + (costsByDept['INCOMING'] || 0) + (costsByDept['ADMIN&INCOMING'] || 0) }
+        ].filter(d => d.total > 0);
+        return resultData.sort((a, b) => b.total - a.total);
+    }, [tableData]);
+    return (
+        <div className="container mx-auto">
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Consumables Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>Upload Excel</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
+                <div className="flex flex-col gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {kpis.map((kpi, index) => (
+                            <KPICard
+                                key={index}
+                                title={kpi.title}
+                                value={kpi.value}
+                                icon={kpi.icon}
+                                color={kpi.color}
+                            />
+                        ))}
+                    </div>
+                    <MainChart data={chartData} title="Monthly Consumables Cost" theme={theme} />
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 5 Frequent Items</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Description</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-center">Frequency</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topItems.length > 0 ? topItems.map((item, index) => (
+                                            <tr key={item.material} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-sm truncate" title={item.description}>{item.description}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-center">{item.count}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">
+                                                    {item.total.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={4} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                                    No data available.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Cost by Department</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {departmentCosts.length > 0 ? departmentCosts.map((item) => (
+                                            <tr key={item.name} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{item.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">
+                                                    {item.total.toLocaleString('th-TH', { style: 'currency', currency: 'THB' })}
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan={2} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                                    No data for specified departments.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                        <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Recent Transactions</h3>
+                             <div className="relative">
+                                <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+                                <input
+                                    type="text"
+                                    placeholder="Search transactions..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-auto max-h-[600px]">
+                            <table className="w-full text-left">
+                                <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                    <tr className="border-b border-light-border dark:border-dark-border">
+                                        {headers.map(header => (
+                                            <th key={header} className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase whitespace-nowrap">{header}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                    {filteredData.length > 0 ? (
+                                        filteredData.map((row, index) => (
+                                            <tr key={index} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.date}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.material}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-xs truncate" title={row.description}>{row.description}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.quantity}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.unit}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.price}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalPrice}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.costCenter}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                            No results found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
+                    <div className="text-center">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                            Please upload an Excel file using the button above to view the report.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+// ===================================================
+// END: components/ConsumablesReport.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/OTReport.tsx
+// ===================================================
+const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const fileInputRef = useRef(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+    };
+    const headers = ['ID', 'Employee ID', 'Name', 'Position', 'Department', 'Grade', 'Status', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Total'];
+    const filteredData = tableData.filter(row => {
+        const searchString = searchTerm.toLowerCase();
+        return (
+            row.id.toLowerCase().includes(searchString) ||
+            row.employeeId.toLowerCase().includes(searchString) ||
+            row.name.toLowerCase().includes(searchString) ||
+            row.position.toLowerCase().includes(searchString) ||
+            row.department.toLowerCase().includes(searchString) ||
+            row.grade.toLowerCase().includes(searchString) ||
+            row.status.toLowerCase().includes(searchString) ||
+            String(row.totalOT).toLowerCase().includes(searchString)
+        );
+    });
+    const topEmployees = useMemo(() => {
+        if (!tableData) return [];
+        return [...tableData]
+            .sort((a, b) => b.totalOT - a.totalOT)
+            .slice(0, 10);
+    }, [tableData]);
+    const topDepartments = useMemo(() => {
+        if (!tableData) return [];
+        const departmentTotals = {};
+        tableData.forEach(row => {
+            if (row.department) {
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalOT;
+            }
+        });
+        return Object.entries(departmentTotals)
+            .map(([name, total]) => ({ name, total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 10);
+    }, [tableData]);
+    return (
+        <div className="container mx-auto">
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload OT Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>Upload Excel</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
+                <div className="flex flex-col gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {kpis.map((kpi, index) => (
+                            <KPICard
+                                key={index}
+                                title={kpi.title}
+                                value={kpi.value}
+                                icon={kpi.icon}
+                                color={kpi.color}
+                            />
+                        ))}
+                    </div>
+                    <MainChart data={chartData} title="Monthly Overtime Hours" theme={theme} />
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 10 Employees by OT</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Name</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Hours</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topEmployees.map((employee, index) => (
+                                            <tr key={employee.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-xs truncate" title={employee.name}>{employee.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary">{employee.department}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">{employee.totalOT.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 10 Departments by OT</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Hours</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topDepartments.map((dept, index) => (
+                                            <tr key={dept.name} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary">{dept.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">{dept.total.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                        <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Employee OT Details</h3>
+                            <div className="relative">
+                                <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+                                <input
+                                    type="text"
+                                    placeholder="Search employees..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-auto max-h-[600px]">
+                            <table className="w-full text-left min-w-[1200px]">
+                                <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                    <tr className="border-b border-light-border dark:border-dark-border">
+                                        {headers.map(header => (
+                                            <th key={header} className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase whitespace-nowrap">{header}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                    {filteredData.length > 0 ? (
+                                        filteredData.map((row) => (
+                                            <tr key={row.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
+                                                {row.monthlyOT.map((ot, i) => (
+                                                    <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{ot.toFixed(2)}</td>
+                                                ))}
+                                                <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalOT.toFixed(2)}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                                No results found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
+                    <div className="text-center">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                            Please upload an Excel file using the button above to view the OT report.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+// ===================================================
+// END: components/OTReport.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/LeaveReport.tsx
+// ===================================================
+const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const fileInputRef = useRef(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+    };
+    const headers = ['NO.', 'EMP.', 'NAME-SURENAME', 'POSITION', 'DEPT.', 'Grade', 'STATUS', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'Leave (No Vac)', 'Leave (w/ Vac)', 'Vac Carried', 'Vac Entitled', 'Total Vac', 'Vac Used', 'Vac Accrued', 'Sick', 'Personal', 'Birthday', 'Other', 'Total'];
+    const filteredData = tableData.filter(row => {
+        const searchString = searchTerm.toLowerCase();
+        return (
+            row.id.toLowerCase().includes(searchString) ||
+            row.employeeId.toLowerCase().includes(searchString) ||
+            row.name.toLowerCase().includes(searchString) ||
+            row.position.toLowerCase().includes(searchString) ||
+            row.department.toLowerCase().includes(searchString) ||
+            row.grade.toLowerCase().includes(searchString) ||
+            row.status.toLowerCase().includes(searchString) ||
+            String(row.totalLeave).toLowerCase().includes(searchString)
+        );
+    });
+    const topEmployees = useMemo(() => {
+        if (!tableData) return [];
+        return [...tableData]
+            .sort((a, b) => b.totalLeave - a.totalLeave)
+            .slice(0, 10);
+    }, [tableData]);
+    const topLeaveTypes = useMemo(() => {
+        if (!tableData) return [];
+        const leaveTypeTotals = {
+            'Vacation': 0,
+            'Sick Leave': 0,
+            'Personal Leave': 0,
+            'Birthday Leave': 0,
+            'Other Leave': 0,
+        };
+        tableData.forEach(row => {
+            leaveTypeTotals['Vacation'] += row.vacationUsed;
+            leaveTypeTotals['Sick Leave'] += row.sickLeave;
+            leaveTypeTotals['Personal Leave'] += row.personalLeave;
+            leaveTypeTotals['Birthday Leave'] += row.birthdayLeave;
+            leaveTypeTotals['Other Leave'] += row.otherLeave;
+        });
+        return Object.entries(leaveTypeTotals)
+            .map(([name, total]) => ({ name, total }))
+            .sort((a, b) => b.total - a.total);
+    }, [tableData]);
+    const topDepartments = useMemo(() => {
+        if (!tableData) return [];
+        const departmentTotals = {};
+        tableData.forEach(row => {
+            if (row.department) {
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalLeave;
+            }
+        });
+        return Object.entries(departmentTotals)
+            .map(([name, total]) => ({ name, total }))
+            .sort((a, b) => b.total - a.total)
+            .slice(0, 5);
+    }, [tableData]);
+    return (
+        <div className="container mx-auto">
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Leave Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>Upload Excel</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
+                <div className="flex flex-col gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {kpis.map((kpi, index) => (
+                            <KPICard
+                                key={index}
+                                title={kpi.title}
+                                value={kpi.value}
+                                icon={kpi.icon}
+                                color={kpi.color}
+                            />
+                        ))}
+                    </div>
+                    <MainChart data={chartData} title="Monthly Leave Days" theme={theme}/>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">10 อันดับพนักงานที่ลามากที่สุด</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Name</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Dept</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topEmployees.map((employee, index) => (
+                                            <tr key={employee.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary max-w-[120px] truncate" title={employee.name}>{employee.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary">{employee.department}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">{employee.totalLeave.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">5 อันดับประเภทการลา</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Leave Type</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topLeaveTypes.map((leaveType, index) => (
+                                            <tr key={leaveType.name} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary">{leaveType.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">{leaveType.total.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                            <div className="p-6 border-b border-light-border dark:border-dark-border">
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">5 อันดับส่วนงานที่ลามากที่สุด</h3>
+                            </div>
+                            <div className="overflow-auto">
+                                <table className="w-full text-left">
+                                    <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                        <tr className="border-b border-light-border dark:border-dark-border">
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                        {topDepartments.map((dept, index) => (
+                                            <tr key={dept.name} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary font-medium">{index + 1}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary">{dept.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary text-right font-semibold">{dept.total.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                        <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Employee Leave Details</h3>
+                            <div className="relative">
+                                <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+                                <input
+                                    type="text"
+                                    placeholder="Search employees..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-auto max-h-[600px]">
+                            <table className="w-full text-left min-w-[2800px]">
+                                <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                    <tr className="border-b border-light-border dark:border-dark-border">
+                                        {headers.map(header => (
+                                            <th key={header} className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase whitespace-nowrap">{header}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                    {filteredData.length > 0 ? (
+                                        filteredData.map((row) => (
+                                            <tr key={row.employeeId} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.name}>{row.name}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.position}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.grade}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.status}</td>
+                                                {row.monthlyLeave.map((leave, i) => (
+                                                    <td key={i} className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{leave.toFixed(2)}</td>
+                                                ))}
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.leaveWithoutVacation.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalLeaveWithVacation.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationCarriedOver.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationEntitlement.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.totalVacation.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationUsed.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.vacationAccrued.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.sickLeave.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.personalLeave.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.birthdayLeave.toFixed(2)}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.otherLeave.toFixed(2)}</td>
+                                                <td className="p-4 text-sm font-bold text-brand-primary whitespace-nowrap text-right">{row.totalLeave.toFixed(2)}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                                No results found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
+                    <div className="text-center">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                            Please upload an Excel file using the button above to view the Leave report.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+// ===================================================
+// END: components/LeaveReport.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/AccidentReport.tsx
+// ===================================================
+const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const fileInputRef = useRef(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const handleUploadClick = () => {
+        fileInputRef.current?.click();
+    };
+    const handleFileChange = (event) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onFileUpload(file);
+        }
+    };
+    const headers = ['ลำดับ', 'วันที่เกิดเหตุ', 'เวลา', 'ความรุนแรง', 'ครั้งที่', 'ส่วนงาน', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'ตำแหน่ง', 'รายละเอียด', 'สาเหตุ', 'มาตรการป้องกัน', 'มูลค่าความเสียหาย', 'การเคลม', 'การดำเนินการ', 'บทลงโทษ', 'หมายเหตุ', 'สถานที่'];
+    const filteredData = tableData.filter(row =>
+        Object.values(row).some(value =>
+            String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        )
+    );
+    return (
+        <div className="container mx-auto">
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Accident Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>Upload Excel</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
+                <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
+                        {kpis.map((kpi, index) => (
+                            <KPICard
+                                key={index}
+                                title={kpi.title}
+                                value={kpi.value}
+                                icon={kpi.icon}
+                                color={kpi.color}
+                            />
+                        ))}
+                    </div>
+                    <div className="mb-8 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-6">
+                        <MainChart data={chartData} title="อุบัติเหตุตามส่วนงาน" theme={theme} />
+                    </div>
+                    <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
+                        <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Accident Details</h3>
+                            <div className="relative">
+                                <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+                                <input
+                                    type="text"
+                                    placeholder="Search accidents..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
+                                />
+                            </div>
+                        </div>
+                        <div className="overflow-auto max-h-[600px]">
+                            <table className="w-full text-left min-w-[3200px]">
+                                <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
+                                    <tr className="border-b border-light-border dark:border-dark-border">
+                                        {headers.map(header => (
+                                            <th key={header} className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase whitespace-nowrap">{header}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className='divide-y divide-light-border dark:divide-dark-border'>
+                                    {filteredData.length > 0 ? (
+                                        filteredData.map((row) => (
+                                            <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-dark-bg/50 transition-colors">
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.id}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.incidentDate}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.incidentTime}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.severity}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-center">{row.occurrence}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.department}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.employeeId}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.employeeName}>{row.employeeName}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap max-w-xs truncate" title={row.position}>{row.position}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-normal max-w-md">{row.details}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-normal max-w-md">{row.cause}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-normal max-w-md">{row.prevention}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap text-right">{row.damageValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.insuranceClaim}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-normal max-w-md">{row.actionTaken}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-normal max-w-xs">{row.penalty}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.remarks}</td>
+                                                <td className="p-4 text-sm text-light-text-primary dark:text-dark-text-primary whitespace-nowrap">{row.accidentLocation}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                                                No results found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            ) : (
+                <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
+                    <div className="text-center">
+                        <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                            Please upload an Excel file using the button above to view the Accident report.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+// ===================================================
+// END: components/AccidentReport.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/Sidebar.tsx
+// ===================================================
+const NavLink = ({ icon, text, active, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center w-full px-4 py-3 text-lg rounded-lg transition-colors duration-200 text-left ${
+      active
+        ? 'bg-brand-primary text-white font-semibold shadow-lg'
+        : 'text-light-text-secondary dark:text-dark-text-secondary hover:bg-slate-100 dark:hover:bg-dark-card hover:text-light-text-primary dark:hover:text-dark-text-primary'
+    }`}
+    aria-current={active ? 'page' : undefined}
+  >
+    <span className="mr-4">{icon}</span>
+    {text}
+  </button>
+);
+const Sidebar = ({ activePage, onNavigate }) => {
+  const navItems = [
+    { name: 'รายงาน KPI', icon: <HomeIcon className="h-6 w-6" /> },
+    { name: 'รายงานวัสดุสิ้นเปลือง', icon: <ClipboardDocumentListIcon className="h-6 w-6" /> },
+    { name: 'รายงานOT', icon: <ClockIcon className="h-6 w-6" /> },
+    { name: 'รายงานการลา', icon: <CalendarDaysIcon className="h-6 w-6" /> },
+    { name: 'รายงานอุบัติเหตุ', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
+    { name: 'Reports', icon: <ChartPieIcon className="h-6 w-6" /> },
+    { name: 'Documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
+    { name: 'Settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
+  ];
+  return (
+    <aside className="w-64 flex-shrink-0 bg-light-card dark:bg-dark-card border-r border-light-border dark:border-dark-border p-6 flex-col hidden lg:flex">
+      <div className="flex items-center mb-10">
+        <BoltIcon className="h-10 w-10 text-brand-primary" />
+        <span className="text-2xl font-bold ml-3 text-light-text-primary dark:text-dark-text-primary">Analytics</span>
+      </div>
+      <nav className="flex-1 flex flex-col gap-3">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.name}
+            icon={item.icon}
+            text={item.name}
+            active={activePage === item.name}
+            onClick={() => onNavigate(item.name)}
+          />
+        ))}
+      </nav>
+      <div className="mt-auto">
+        <NavLink 
+          icon={<QuestionMarkCircleIcon className="h-6 w-6" />} 
+          text="Help Center" 
+          active={activePage === 'Help Center'}
+          onClick={() => onNavigate('Help Center')}
+        />
+      </div>
+    </aside>
+  );
+};
+// ===================================================
+// END: components/Sidebar.tsx
+// ===================================================
+
+
+// ===================================================
+// START: components/Header.tsx
+// ===================================================
+const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
+  const fileInputRef = useRef(null);
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+  const handleFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onFileUpload(file);
+    }
+  };
+  return (
+    <header className="bg-light-card dark:bg-dark-card border-b border-light-border dark:border-dark-border p-4 shadow-sm flex items-center justify-between">
+      <div className="flex items-center">
+        <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{activePage}</h1>
+      </div>
+      <div className="flex items-center gap-6">
+        <div className="relative hidden md:block">
+          <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
+          <input
+            type="text"
+            placeholder="Search..."
+            className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
+          />
+        </div>
+        {activePage === 'รายงาน KPI' && (
+          <>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".xlsx, .xls"
+            />
+            <button 
+                onClick={handleUploadClick}
+                className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                aria-label="Upload KPI data file"
+            >
+                <ArrowUpTrayIcon className="h-5 w-5" />
+                <span className='hidden sm:inline'>Upload KPI Data</span>
+            </button>
+          </>
+        )}
+        <button
+          onClick={toggleTheme}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
+          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        >
+          {theme === 'dark' ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
+        </button>
+        <button className="relative text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">
+          <BellIcon className="h-6 w-6" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-secondary opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-brand-secondary"></span>
+          </span>
+        </button>
+        <div className="flex items-center gap-3">
+            <img
+                src="https://picsum.photos/seed/user1/40/40"
+                alt="User Avatar"
+                className="h-10 w-10 rounded-full border-2 border-brand-primary"
+            />
+            <div className='hidden sm:block'>
+                <p className="font-semibold text-light-text-primary dark:text-dark-text-primary">Jane Doe</p>
+                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Admin</p>
+            </div>
+        </div>
+      </div>
+    </header>
+  );
+};
+// ===================================================
+// END: components/Header.tsx
+// ===================================================
+
+
+// ===================================================
+// START: App.tsx
+// ===================================================
+const getInitialState = (key, defaultValue) => {
+    try {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue) {
+            return JSON.parse(storedValue);
+        }
+    } catch (error) {
+        console.error(`Error reading "${key}" from localStorage`, error);
+        localStorage.removeItem(key);
+    }
+    return defaultValue;
+};
+const PlaceholderPage = ({ title }) => (
+  <div className="flex items-center justify-center h-full w-full">
+    <div className="text-center">
+      <h1 className="text-4xl font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-tight">{title}</h1>
+      <p className="mt-2 text-lg text-light-text-secondary dark:text-dark-text-secondary">This page is under construction.</p>
+    </div>
+  </div>
+);
+const App = () => {
+  const [kpis, setKpis] = useState(getInitialState('kpis', kpiData));
+  const [chartData, setChartData] = useState(getInitialState('chartData', mainChartData));
+  const [tableRows, setTableRows] = useState(getInitialState('tableRows', tableData));
+  const [activePage, setActivePage] = useState(getInitialState('activePage', 'รายงาน KPI'));
+  const [consumablesTableData, setConsumablesTableData] = useState(getInitialState('consumablesTableData', []));
+  const [consumablesKpis, setConsumablesKpis] = useState(getInitialState('consumablesKpis', []));
+  const [consumablesChartData, setConsumablesChartData] = useState(getInitialState('consumablesChartData', []));
+  const [otTableData, setOtTableData] = useState(getInitialState('otTableData', []));
+  const [otKpis, setOtKpis] = useState(getInitialState('otKpis', []));
+  const [otChartData, setOtChartData] = useState(getInitialState('otChartData', []));
+  const [leaveTableData, setLeaveTableData] = useState(getInitialState('leaveTableData', []));
+  const [leaveKpis, setLeaveKpis] = useState(getInitialState('leaveKpis', []));
+  const [leaveChartData, setLeaveChartData] = useState(getInitialState('leaveChartData', []));
+  const [accidentTableData, setAccidentTableData] = useState(getInitialState('accidentTableData', []));
+  const [accidentKpis, setAccidentKpis] = useState(getInitialState('accidentKpis', []));
+  const [accidentChartData, setAccidentChartData] = useState(getInitialState('accidentChartData', []));
+  const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
+
+  const toggleTheme = () => {
+      setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+  };
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const isDark = theme === 'dark';
+    root.classList.remove(isDark ? 'light' : 'dark');
+    root.classList.add(theme);
+    localStorage.setItem('theme', JSON.stringify(theme));
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('kpis', JSON.stringify(kpis));
+    localStorage.setItem('chartData', JSON.stringify(chartData));
+    localStorage.setItem('tableRows', JSON.stringify(tableRows));
+  }, [kpis, chartData, tableRows]);
+
+  useEffect(() => {
+    localStorage.setItem('activePage', JSON.stringify(activePage));
+  }, [activePage]);
+
+  useEffect(() => {
+    localStorage.setItem('consumablesTableData', JSON.stringify(consumablesTableData));
+    localStorage.setItem('consumablesKpis', JSON.stringify(consumablesKpis));
+    localStorage.setItem('consumablesChartData', JSON.stringify(consumablesChartData));
+  }, [consumablesTableData, consumablesKpis, consumablesChartData]);
+
+  useEffect(() => {
+    localStorage.setItem('otTableData', JSON.stringify(otTableData));
+    localStorage.setItem('otKpis', JSON.stringify(otKpis));
+    localStorage.setItem('otChartData', JSON.stringify(otChartData));
+  }, [otTableData, otKpis, otChartData]);
+
+  useEffect(() => {
+    localStorage.setItem('leaveTableData', JSON.stringify(leaveTableData));
+    localStorage.setItem('leaveKpis', JSON.stringify(leaveKpis));
+    localStorage.setItem('leaveChartData', JSON.stringify(leaveChartData));
+  }, [leaveTableData, leaveKpis, leaveChartData]);
+
+  useEffect(() => {
+    localStorage.setItem('accidentTableData', JSON.stringify(accidentTableData));
+    localStorage.setItem('accidentKpis', JSON.stringify(accidentKpis));
+    localStorage.setItem('accidentChartData', JSON.stringify(accidentChartData));
+  }, [accidentTableData, accidentKpis, accidentChartData]);
+
+  const handleDashboardFileUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = e.target?.result;
+            const workbook = read(data, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                return;
+            }
+            const newKpis = [];
+            const newTableRows = [];
+            const monthCols = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            rows.forEach((row, index) => {
+                if (!row || row.length < 18 || !row[1]) return;
+                const score = row[16] ? String(row[16]) : 'N/A';
+                const result = row[17] ? String(row[17]) : 'N/A';
+                newKpis.push({
+                    title: String(row[1] || 'Untitled KPI'),
+                    value: score,
+                    trend: result,
+                    trendDirection: result.toUpperCase() === 'PASS' ? 'up' : 'down',
+                    icon: kpiData[index % kpiData.length].icon,
+                    color: kpiData[index % kpiData.length].color,
+                });
+                newTableRows.push({
+                    kpi: {
+                        title: String(row[1] || 'Untitled KPI'),
+                        measurement: String(row[3] || ''),
+                    },
+                    target: String(row[2] || 'N/A'),
+                    score: score,
+                    result: result,
+                });
+            });
+            const firstKpiRow = rows[0];
+            const newChartData = monthCols.map((month, index) => {
+                const rawValue = firstKpiRow[4 + index];
+                let numericValue = 0;
+                if (typeof rawValue === 'string') {
+                    numericValue = parseFloat(rawValue.replace('%', ''));
+                } else if (typeof rawValue === 'number') {
+                    numericValue = rawValue;
+                }
+                return {
+                    name: month,
+                    value: isNaN(numericValue) ? 0 : numericValue,
+                };
+            });
+            setKpis(newKpis.slice(0, 4));
+            setChartData(newChartData);
+            setTableRows(newTableRows);
+            setActivePage('รายงาน KPI');
+        } catch (error) {
+            console.error("Error processing Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleConsumablesFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setConsumablesTableData([]);
+                setConsumablesKpis([]);
+                setConsumablesChartData([]);
+                return;
+            }
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 9) return null;
+                let date = row[0];
+                if (typeof date === 'number') {
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const jsDate = new Date(excelEpoch.getTime() + date * 86400000);
+                    date = jsDate.toLocaleDateString('en-GB');
+                } else if (date instanceof Date) {
+                    date = date.toLocaleDateString('en-GB');
+                }
+                return {
+                    date: String(date || ''),
+                    material: String(row[1] || ''),
+                    description: String(row[2] || ''),
+                    quantity: String(row[3] || '0'),
+                    unit: String(row[4] || ''),
+                    price: String(row[5] || '0'),
+                    totalPrice: String(row[6] || '0'),
+                    costCenter: String(row[7] || ''),
+                    department: String(row[8] || ''),
+                };
+            }).filter((item) => item !== null && item.date !== '');
+            const totalCost = newReportData.reduce((acc, row) => {
+                const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g,""));
+                return acc + (isNaN(price) ? 0 : price);
+            }, 0);
+            const uniqueItems = new Set(newReportData.map(row => row.material)).size;
+            const uniqueDepartments = new Set(newReportData.map(row => row.department)).size;
+            const totalTransactions = newReportData.length;
+            const newKpis = [
+                { title: 'Total Cost', value: `฿${totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-success' },
+                { title: 'Total Items', value: uniqueItems.toLocaleString(), icon: 'ArchiveBoxIcon', color: 'text-brand-primary' },
+                { title: 'Departments', value: uniqueDepartments.toLocaleString(), icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Transactions', value: totalTransactions.toLocaleString(), icon: 'DocumentTextIcon', color: 'text-brand-secondary' }
+            ];
+            const monthlyTotals = {};
+            newReportData.forEach(row => {
+                const dateParts = row.date.split('/');
+                if (dateParts.length === 3) {
+                    const month = parseInt(dateParts[1], 10) - 1;
+                    const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, ""));
+                    if (!isNaN(month) && month >= 0 && month < 12 && !isNaN(price)) {
+                        monthlyTotals[month] = (monthlyTotals[month] || 0) + price;
+                    }
+                }
+            });
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: monthlyTotals[index] || 0,
+            }));
+            setConsumablesChartData(newChartData);
+            setConsumablesKpis(newKpis);
+            setConsumablesTableData(newReportData);
+        } catch (error) {
+            console.error("Error processing consumables Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleOTFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setOtTableData([]);
+                setOtKpis([]);
+                setOtChartData([]);
+                return;
+            }
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 20) return null;
+                const monthlyOT = [];
+                for (let i = 7; i <= 18; i++) {
+                    const val = parseFloat(row[i]);
+                    monthlyOT.push(isNaN(val) ? 0 : val);
+                }
+                const totalOT = parseFloat(row[19]);
+                return {
+                    id: String(row[0] || ''),
+                    employeeId: String(row[1] || ''),
+                    name: String(row[2] || ''),
+                    position: String(row[3] || ''),
+                    department: String(row[4] || ''),
+                    grade: String(row[5] || ''),
+                    status: String(row[6] || ''),
+                    monthlyOT: monthlyOT,
+                    totalOT: isNaN(totalOT) ? 0 : totalOT,
+                };
+            }).filter((item) => item !== null && item.employeeId !== '');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyTotals = Array(12).fill(0);
+            const departmentTotals = {};
+            let totalOTAll = 0;
+            newReportData.forEach(row => {
+                row.monthlyOT.forEach((ot, index) => {
+                    monthlyTotals[index] += ot;
+                });
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalOT;
+                totalOTAll += row.totalOT;
+            });
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: parseFloat(monthlyTotals[index].toFixed(2)),
+            }));
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+            const newKpis = [
+                { title: 'Total OT Hours', value: totalOTAll.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), icon: 'ClockIcon', color: 'text-brand-primary' },
+                { title: 'Total Employees', value: newReportData.length.toLocaleString(), icon: 'UsersIcon', color: 'text-brand-secondary' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
+            ];
+            setOtChartData(newChartData);
+            setOtKpis(newKpis);
+            setOtTableData(newReportData);
+        } catch (error) {
+            console.error("Error processing OT Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleLeaveFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setLeaveTableData([]);
+                setLeaveKpis([]);
+                setLeaveChartData([]);
+                return;
+            }
+            const newReportData = rows.map((row, index) => {
+                if (!row || row.length < 29) return null;
+                const getNum = (val) => {
+                    if (typeof val === 'number') {
+                        return isNaN(val) ? 0 : val;
+                    }
+                    if (typeof val === 'string') {
+                        const cleanedVal = val.replace(/[^0-9.-]+/g, "");
+                        if (cleanedVal === '') return 0;
+                        const num = parseFloat(cleanedVal);
+                        return isNaN(num) ? 0 : num;
+                    }
+                    return 0;
+                };
+                const monthlyLeave = [];
+                for (let i = 5; i <= 16; i++) {
+                    monthlyLeave.push(getNum(row[i]));
+                }
+                const name = String(row[0] || '');
+                return {
+                    id: String(index + 1),
+                    employeeId: `${name.replace(/\s/g, '-')}-${index}`,
+                    name: name,
+                    position: String(row[1] || ''),
+                    department: String(row[2] || ''),
+                    grade: String(row[3] || ''),
+                    status: String(row[4] || ''),
+                    monthlyLeave: monthlyLeave,
+                    leaveWithoutVacation: getNum(row[17]),
+                    totalLeaveWithVacation: getNum(row[18]),
+                    vacationCarriedOver: getNum(row[19]),
+                    vacationEntitlement: getNum(row[20]),
+                    totalVacation: getNum(row[21]),
+                    vacationUsed: getNum(row[22]),
+                    vacationAccrued: getNum(row[23]),
+                    sickLeave: getNum(row[24]),
+                    personalLeave: getNum(row[25]),
+                    birthdayLeave: getNum(row[26]),
+                    otherLeave: getNum(row[27]),
+                    totalLeave: getNum(row[28]),
+                };
+            }).filter((item) => item !== null && item.name !== '');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyTotals = Array(12).fill(0);
+            const departmentTotals = {};
+            const leaveTypeTotals = { 'Sick': 0, 'Personal': 0, 'Birthday': 0, 'Other': 0 };
+            let totalLeaveAll = 0;
+            newReportData.forEach(row => {
+                row.monthlyLeave.forEach((leave, index) => {
+                    monthlyTotals[index] += leave;
+                });
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalLeave;
+                leaveTypeTotals['Sick'] += row.sickLeave;
+                leaveTypeTotals['Personal'] += row.personalLeave;
+                leaveTypeTotals['Birthday'] += row.birthdayLeave;
+                leaveTypeTotals['Other'] += row.otherLeave;
+                totalLeaveAll += row.totalLeave;
+            });
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: parseFloat(monthlyTotals[index].toFixed(2)),
+            }));
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topLeaveType = Object.entries(leaveTypeTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+            const newKpis = [
+                { title: 'Total Leave Days', value: totalLeaveAll.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), icon: 'UsersIcon', color: 'text-brand-primary' },
+                { title: 'Top Leave Type', value: topLeaveType[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
+            ];
+            setLeaveChartData(newChartData);
+            setLeaveKpis(newKpis);
+            setLeaveTableData(newReportData);
+        } catch (error) {
+            console.error("Error processing Leave Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleAccidentFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setAccidentTableData([]);
+                return;
+            }
+            const getNum = (val) => {
+                if (typeof val === 'number') return isNaN(val) ? 0 : val;
+                if (typeof val === 'string') {
+                    const cleanedVal = val.replace(/[^0-9.-]+/g, "");
+                    if (cleanedVal === '') return 0;
+                    const num = parseFloat(cleanedVal);
+                    return isNaN(num) ? 0 : num;
+                }
+                return 0;
+            };
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 18) return null;
+                let incidentDate = row[1];
+                if (typeof incidentDate === 'number' && incidentDate > 0) {
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const jsDate = new Date(excelEpoch.getTime() + incidentDate * 86400000);
+                    incidentDate = jsDate.toLocaleDateString('en-GB');
+                } else if (incidentDate instanceof Date) {
+                    incidentDate = incidentDate.toLocaleDateString('en-GB');
+                }
+                return {
+                    id: String(row[0] || ''),
+                    incidentDate: String(incidentDate || ''),
+                    incidentTime: String(row[2] || ''),
+                    severity: String(row[3] || ''),
+                    occurrence: String(row[4] || ''),
+                    department: String(row[5] || ''),
+                    employeeId: String(row[6] || ''),
+                    employeeName: String(row[7] || ''),
+                    position: String(row[8] || ''),
+                    details: String(row[9] || ''),
+                    cause: String(row[10] || ''),
+                    prevention: String(row[11] || ''),
+                    damageValue: getNum(row[12]),
+                    insuranceClaim: String(row[13] || ''),
+                    actionTaken: String(row[14] || ''),
+                    penalty: String(row[15] || ''),
+                    remarks: String(row[16] || ''),
+                    accidentLocation: String(row[17] || ''),
+                };
+            }).filter((item) => item !== null && item.id !== '');
+            const departmentTotals = {};
+            const severityTotals = {};
+            let totalDamage = 0;
+            newReportData.forEach(row => {
+                if (row.department) {
+                    departmentTotals[row.department] = (departmentTotals[row.department] || 0) + 1;
+                }
+                if (row.severity) {
+                    severityTotals[row.severity] = (severityTotals[row.severity] || 0) + 1;
+                }
+                totalDamage += row.damageValue;
+            });
+            const newChartData = Object.entries(departmentTotals)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topSeverity = Object.entries(severityTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const newKpis = [
+                { title: 'Total Incidents', value: newReportData.length.toLocaleString(), icon: 'ExclamationTriangleIcon', color: 'text-brand-danger' },
+                { title: 'Total Damage Value', value: `฿${totalDamage.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-warning' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-primary' },
+                { title: 'Top Severity', value: topSeverity[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' }
+            ];
+            const severityColors = ['text-red-400', 'text-orange-400', 'text-amber-400', 'text-yellow-400', 'text-lime-400'];
+            Object.entries(severityTotals)
+              .sort((a, b) => b[1] - a[1])
+              .forEach(([name, value], index) => {
+                if (name.trim() !== '') {
+                  newKpis.push({
+                      title: `ประเภท: ${name}`,
+                      value: `${value.toLocaleString()} ครั้ง`,
+                      icon: 'ClipboardDocumentCheckIcon', 
+                      color: severityColors[index % severityColors.length]
+                  });
+                }
+            });
+            setAccidentChartData(newChartData);
+            setAccidentKpis(newKpis);
+            setAccidentTableData(newReportData);
+        } catch (error) {
+            console.error("Error processing Accident Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+  const renderContent = () => {
+    switch (activePage) {
+      case 'รายงาน KPI':
+        return (
+          <div className="container mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {kpis.map((kpi, index) => (
+                <KPICard
+                  key={index}
+                  title={kpi.title}
+                  value={kpi.value}
+                  trend={kpi.trend}
+                  trendDirection={kpi.trendDirection}
+                  icon={kpi.icon}
+                  color={kpi.color}
+                />
+              ))}
+            </div>
+            <div className="flex flex-col gap-8">
+              <MainChart data={chartData} theme={theme} />
+              <DataTable data={tableRows} />
+            </div>
+          </div>
+        );
+      case 'รายงานวัสดุสิ้นเปลือง':
+        return <ConsumablesReport 
+                  tableData={consumablesTableData}
+                  kpis={consumablesKpis}
+                  chartData={consumablesChartData}
+                  onFileUpload={handleConsumablesFileUpload}
+                  theme={theme}
+                />;
+      case 'รายงานOT':
+        return <OTReport
+                  tableData={otTableData}
+                  kpis={otKpis}
+                  chartData={otChartData}
+                  onFileUpload={handleOTFileUpload}
+                  theme={theme}
+                />;
+      case 'รายงานการลา':
+        return <LeaveReport
+                  tableData={leaveTableData}
+                  kpis={leaveKpis}
+                  chartData={leaveChartData}
+                  onFileUpload={handleLeaveFileUpload}
+                  theme={theme}
+                />;
+      case 'รายงานอุบัติเหตุ':
+        return <AccidentReport
+                  tableData={accidentTableData}
+                  kpis={accidentKpis}
+                  chartData={accidentChartData}
+                  onFileUpload={handleAccidentFileUpload}
+                  theme={theme}
+                />;
+      case 'Reports':
+        return <PlaceholderPage title="Reports" />;
+      case 'Documents':
+        return <PlaceholderPage title="Documents" />;
+      case 'Settings':
+        return <PlaceholderPage title="Settings" />;
+      case 'Help Center':
+        return <PlaceholderPage title="Help Center" />;
+      default:
+        return <PlaceholderPage title="Page Not Found" />;
+    }
+  };
+  return (
+    <div className="flex h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
+      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onFileUpload={handleDashboardFileUpload} activePage={activePage} theme={theme} toggleTheme={toggleTheme} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
+          {renderContent()}
+        </main>
+      </div>
+    </div>
+  );
+};
+// ===================================================
+// END: App.tsx
+// ===================================================
+
+
+// ===================================================
+// START: index.tsx (Entry point)
+// ===================================================
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+// ===================================================
+// END: index.tsx
+// ===================================================
+
+    </script>
+  </body>
+</html>
