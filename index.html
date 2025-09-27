@@ -600,7 +600,9 @@ const workloadData = [
 // ===================================================
 // START: MOCK BACKEND
 // ===================================================
-const mockDatabase = {
+const DB_STORAGE_KEY = 'kpiDashboardDatabase';
+
+const defaultDatabase = {
   kpiData: {
     kpis: kpiData,
     chartData: mainChartData,
@@ -631,30 +633,59 @@ const mockDatabase = {
   }
 };
 
+const loadDatabase = () => {
+    try {
+        const storedDb = localStorage.getItem(DB_STORAGE_KEY);
+        if (storedDb) {
+            return JSON.parse(storedDb);
+        }
+    } catch (error) {
+        console.error("Failed to parse database from localStorage, using default.", error);
+        localStorage.removeItem(DB_STORAGE_KEY);
+    }
+    return JSON.parse(JSON.stringify(defaultDatabase));
+};
+
+const mockDatabase = loadDatabase();
+
+const persistDatabase = () => {
+    try {
+        localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(mockDatabase));
+    } catch (error) {
+        console.error("Failed to save database to localStorage.", error);
+    }
+};
+
 const mockApi = {
   getData: () => new Promise(resolve => setTimeout(() => resolve(JSON.parse(JSON.stringify(mockDatabase))), 1500)),
   updateKpi: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.kpiData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.kpiData)));
   }, 500)),
   updateConsumables: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.consumablesData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.consumablesData)));
   }, 500)),
   updateOt: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.otData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.otData)));
   }, 500)),
   updateLeave: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.leaveData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.leaveData)));
   }, 500)),
   updateAccident: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.accidentData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.accidentData)));
   }, 500)),
   updateWorkload: (data) => new Promise(resolve => setTimeout(() => {
     mockDatabase.workloadData = data;
+    persistDatabase();
     resolve(JSON.parse(JSON.stringify(mockDatabase.workloadData)));
   }, 500)),
 };
