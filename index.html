@@ -598,6 +598,71 @@ const workloadData = [
 
 
 // ===================================================
+// START: MOCK BACKEND
+// ===================================================
+const mockDatabase = {
+  kpiData: {
+    kpis: kpiData,
+    chartData: mainChartData,
+    tableRows: tableData,
+  },
+  consumablesData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  otData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  leaveData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  accidentData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  workloadData: {
+    data: workloadData
+  }
+};
+
+const mockApi = {
+  getData: () => new Promise(resolve => setTimeout(() => resolve(JSON.parse(JSON.stringify(mockDatabase))), 1500)),
+  updateKpi: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.kpiData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.kpiData)));
+  }, 500)),
+  updateConsumables: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.consumablesData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.consumablesData)));
+  }, 500)),
+  updateOt: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.otData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.otData)));
+  }, 500)),
+  updateLeave: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.leaveData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.leaveData)));
+  }, 500)),
+  updateAccident: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.accidentData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.accidentData)));
+  }, 500)),
+  updateWorkload: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.workloadData = data;
+    resolve(JSON.parse(JSON.stringify(mockDatabase.workloadData)));
+  }, 500)),
+};
+// ===================================================
+// END: MOCK BACKEND
+// ===================================================
+
+// ===================================================
 // START: components/KPICard.tsx
 // ===================================================
 const IconComponent = ({ name, className }) => {
@@ -1669,6 +1734,10 @@ const WorkloadReport = ({ data, theme, onFileUpload }) => {
     };
     
     const { summaryKpis, chartData } = useMemo(() => {
+        if (!data || data.length === 0) {
+            return { summaryKpis: [], chartData: [] };
+        }
+
         const getTonPerHrSumForProduct = (productIndex) => {
             if (productIndex === -1 || !data[productIndex + 1]) return [];
             const tonHrSection = data[productIndex + 1];
@@ -1980,6 +2049,25 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick }) =
 // END: components/Header.tsx
 // ===================================================
 
+// ===================================================
+// START: LoadingSpinner.tsx
+// ===================================================
+const LoadingSpinner = () => {
+    const { t } = useTranslation();
+    return (
+        <div className="flex flex-col items-center justify-center h-screen w-full bg-light-bg dark:bg-dark-bg">
+            <div className="flex items-center">
+                <BoltIcon className="h-16 w-16 text-brand-primary animate-pulse" />
+                <span className="text-3xl font-bold ml-4 text-light-text-secondary dark:text-dark-text-secondary">Loading Dashboard...</span>
+            </div>
+            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Please wait while we fetch your data.</p>
+        </div>
+    );
+};
+// ===================================================
+// END: LoadingSpinner.tsx
+// ===================================================
+
 
 // ===================================================
 // START: App.tsx
@@ -1998,23 +2086,28 @@ const PlaceholderPage = ({ title }) => {
 
 const App = () => {
   const { t } = useTranslation();
-  const [kpis, setKpis] = useState(getInitialState('kpis', kpiData));
-  const [chartData, setChartData] = useState(getInitialState('chartData', mainChartData));
-  const [tableRows, setTableRows] = useState(getInitialState('tableRows', tableData));
+  
+  // Shared Data State
+  const [kpis, setKpis] = useState([]);
+  const [chartData, setChartData] = useState([]);
+  const [tableRows, setTableRows] = useState([]);
+  const [consumablesTableData, setConsumablesTableData] = useState([]);
+  const [consumablesKpis, setConsumablesKpis] = useState([]);
+  const [consumablesChartData, setConsumablesChartData] = useState([]);
+  const [otTableData, setOtTableData] = useState([]);
+  const [otKpis, setOtKpis] = useState([]);
+  const [otChartData, setOtChartData] = useState([]);
+  const [leaveTableData, setLeaveTableData] = useState([]);
+  const [leaveKpis, setLeaveKpis] = useState([]);
+  const [leaveChartData, setLeaveChartData] = useState([]);
+  const [accidentTableData, setAccidentTableData] = useState([]);
+  const [accidentKpis, setAccidentKpis] = useState([]);
+  const [accidentChartData, setAccidentChartData] = useState([]);
+  const [workloadReportData, setWorkloadReportData] = useState([]);
+  
+  // UI State
+  const [isLoading, setIsLoading] = useState(true);
   const [activePage, setActivePage] = useState(getInitialState('activePage', 'kpiReport'));
-  const [consumablesTableData, setConsumablesTableData] = useState(getInitialState('consumablesTableData', []));
-  const [consumablesKpis, setConsumablesKpis] = useState(getInitialState('consumablesKpis', []));
-  const [consumablesChartData, setConsumablesChartData] = useState(getInitialState('consumablesChartData', []));
-  const [otTableData, setOtTableData] = useState(getInitialState('otTableData', []));
-  const [otKpis, setOtKpis] = useState(getInitialState('otKpis', []));
-  const [otChartData, setOtChartData] = useState(getInitialState('otChartData', []));
-  const [leaveTableData, setLeaveTableData] = useState(getInitialState('leaveTableData', []));
-  const [leaveKpis, setLeaveKpis] = useState(getInitialState('leaveKpis', []));
-  const [leaveChartData, setLeaveChartData] = useState(getInitialState('leaveChartData', []));
-  const [accidentTableData, setAccidentTableData] = useState(getInitialState('accidentTableData', []));
-  const [accidentKpis, setAccidentKpis] = useState(getInitialState('accidentKpis', []));
-  const [accidentChartData, setAccidentChartData] = useState(getInitialState('accidentChartData', []));
-  const [workloadReportData, setWorkloadReportData] = useState(getInitialState('workloadReportData', workloadData));
   const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -2031,42 +2124,38 @@ const App = () => {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem('kpis', JSON.stringify(kpis));
-    localStorage.setItem('chartData', JSON.stringify(chartData));
-    localStorage.setItem('tableRows', JSON.stringify(tableRows));
-  }, [kpis, chartData, tableRows]);
-
-  useEffect(() => {
     localStorage.setItem('activePage', JSON.stringify(activePage));
   }, [activePage]);
 
   useEffect(() => {
-    localStorage.setItem('consumablesTableData', JSON.stringify(consumablesTableData));
-    localStorage.setItem('consumablesKpis', JSON.stringify(consumablesKpis));
-    localStorage.setItem('consumablesChartData', JSON.stringify(consumablesChartData));
-  }, [consumablesTableData, consumablesKpis, consumablesChartData]);
-
-  useEffect(() => {
-    localStorage.setItem('otTableData', JSON.stringify(otTableData));
-    localStorage.setItem('otKpis', JSON.stringify(otKpis));
-    localStorage.setItem('otChartData', JSON.stringify(otChartData));
-  }, [otTableData, otKpis, otChartData]);
-
-  useEffect(() => {
-    localStorage.setItem('leaveTableData', JSON.stringify(leaveTableData));
-    localStorage.setItem('leaveKpis', JSON.stringify(leaveKpis));
-    localStorage.setItem('leaveChartData', JSON.stringify(leaveChartData));
-  }, [leaveTableData, leaveKpis, leaveChartData]);
-
-  useEffect(() => {
-    localStorage.setItem('accidentTableData', JSON.stringify(accidentTableData));
-    localStorage.setItem('accidentKpis', JSON.stringify(accidentKpis));
-    localStorage.setItem('accidentChartData', JSON.stringify(accidentChartData));
-  }, [accidentTableData, accidentKpis, accidentChartData]);
-  
-  useEffect(() => {
-    localStorage.setItem('workloadReportData', JSON.stringify(workloadReportData));
-  }, [workloadReportData]);
+    const fetchData = async () => {
+      try {
+        const data = await mockApi.getData();
+        setKpis(data.kpiData.kpis);
+        setChartData(data.kpiData.chartData);
+        setTableRows(data.kpiData.tableRows);
+        setConsumablesTableData(data.consumablesData.tableData);
+        setConsumablesKpis(data.consumablesData.kpis);
+        setConsumablesChartData(data.consumablesData.chartData);
+        setOtTableData(data.otData.tableData);
+        setOtKpis(data.otData.kpis);
+        setOtChartData(data.otData.chartData);
+        setLeaveTableData(data.leaveData.tableData);
+        setLeaveKpis(data.leaveData.kpis);
+        setLeaveChartData(data.leaveData.chartData);
+        setAccidentTableData(data.accidentData.tableData);
+        setAccidentKpis(data.accidentData.kpis);
+        setAccidentChartData(data.accidentData.chartData);
+        setWorkloadReportData(data.workloadData.data);
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        alert("Could not load dashboard data. Please refresh the page.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleNavigate = (page) => {
     setActivePage(page);
@@ -2127,10 +2216,13 @@ const App = () => {
                     value: isNaN(numericValue) ? 0 : numericValue,
                 };
             });
-            setKpis(newKpis.slice(0, 4));
-            setChartData(newChartData);
-            setTableRows(newTableRows);
-            setActivePage('kpiReport');
+            const payload = { kpis: newKpis.slice(0, 4), chartData: newChartData, tableRows: newTableRows };
+            mockApi.updateKpi(payload).then(updated => {
+                setKpis(updated.kpis);
+                setChartData(updated.chartData);
+                setTableRows(updated.tableRows);
+                setActivePage('kpiReport');
+            });
         } catch (error) {
             console.error("Error processing Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -2207,9 +2299,12 @@ const App = () => {
                 name,
                 value: monthlyTotals[index] || 0,
             }));
-            setConsumablesChartData(newChartData);
-            setConsumablesKpis(newKpis);
-            setConsumablesTableData(newReportData);
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            mockApi.updateConsumables(payload).then(updated => {
+                setConsumablesChartData(updated.chartData);
+                setConsumablesKpis(updated.kpis);
+                setConsumablesTableData(updated.tableData);
+            });
         } catch (error) {
             console.error("Error processing consumables Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -2278,9 +2373,12 @@ const App = () => {
                 { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
                 { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
             ];
-            setOtChartData(newChartData);
-            setOtKpis(newKpis);
-            setOtTableData(newReportData);
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            mockApi.updateOt(payload).then(updated => {
+                setOtChartData(updated.chartData);
+                setOtKpis(updated.kpis);
+                setOtTableData(updated.tableData);
+            });
         } catch (error) {
             console.error("Error processing OT Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -2377,9 +2475,12 @@ const App = () => {
                 { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
                 { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
             ];
-            setLeaveChartData(newChartData);
-            setLeaveKpis(newKpis);
-            setLeaveTableData(newReportData);
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            mockApi.updateLeave(payload).then(updated => {
+                setLeaveChartData(updated.chartData);
+                setLeaveKpis(updated.kpis);
+                setLeaveTableData(updated.tableData);
+            });
         } catch (error) {
             console.error("Error processing Leave Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -2480,9 +2581,12 @@ const App = () => {
                   });
                 }
             });
-            setAccidentChartData(newChartData);
-            setAccidentKpis(newKpis);
-            setAccidentTableData(newReportData);
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            mockApi.updateAccident(payload).then(updated => {
+                setAccidentChartData(updated.chartData);
+                setAccidentKpis(updated.kpis);
+                setAccidentTableData(updated.tableData);
+            });
         } catch (error) {
             console.error("Error processing Accident Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -2548,7 +2652,10 @@ const App = () => {
                 }
 
                 if (newWorkloadData.length > 0) {
-                    setWorkloadReportData(newWorkloadData);
+                     const payload = { data: newWorkloadData };
+                    mockApi.updateWorkload(payload).then(updated => {
+                        setWorkloadReportData(updated.data);
+                    });
                 } else {
                     alert("Could not parse any data from the file. Please check the format.");
                 }
@@ -2631,6 +2738,11 @@ const App = () => {
         return <PlaceholderPage title="Page Not Found" />;
     }
   };
+  
+  if (isLoading) {
+      return <LoadingSpinner />;
+  }
+
   return (
     <div className="flex h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
       {isSidebarOpen && (
