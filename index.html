@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -290,6 +289,7 @@ const translations = {
         'leaveReport': 'Leave Report',
         'accidentReport': 'Accident Report',
         'workloadReport': 'Workload Report',
+        'externalApp': 'Warehouse Report',
         'reports': 'Reports',
         'documents': 'Documents',
         'settings': 'Settings',
@@ -301,7 +301,7 @@ const translations = {
         'live': 'Live',
         'connecting': 'Connecting...',
         'offline': 'Offline',
-        'userName': 'Jane Doe',
+        'userName': 'Admin-WH1',
         'userRole': 'Admin',
         // KPI Card
         'vsLastMonth': 'vs last month',
@@ -384,6 +384,7 @@ const translations = {
         'leaveReport': 'รายงานการลา',
         'accidentReport': 'รายงานอุบัติเหตุ',
         'workloadReport': 'ปริมาณการทำงานต่อคน',
+        'externalApp': 'รายงานคลังสินค้า',
         'reports': 'รายงานอื่นๆ',
         'documents': 'เอกสาร',
         'settings': 'ตั้งค่า',
@@ -513,6 +514,11 @@ const useTranslation = () => useContext(LanguageContext);
 // ===================================================
 // START: components/icons/Icons.tsx
 // ===================================================
+const ArrowTopRightOnSquareIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+    </svg>
+);
 const Bars3Icon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -1863,6 +1869,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
     { key: 'leaveReport', icon: <CalendarDaysIcon className="h-6 w-6" /> },
     { key: 'accidentReport', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
     { key: 'workloadReport', icon: <UserGroupIcon className="h-6 w-6" /> },
+    { key: 'externalApp', icon: <ArchiveBoxIcon className="h-6 w-6" /> },
     { key: 'reports', icon: <ChartPieIcon className="h-6 w-6" /> },
     { key: 'documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
     { key: 'settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
@@ -2127,6 +2134,26 @@ service cloud.firestore {
 };
 // ===================================================
 // END: ConnectionErrorDisplay.tsx
+// ===================================================
+
+
+// ===================================================
+// START: ExternalAppPage.tsx
+// ===================================================
+const EXTERNAL_APP_URL = "https://tle125.github.io/WAREHOUSE1-REPORT001/";
+
+const ExternalAppPage = ({ url }) => (
+    <div className="w-full h-full bg-light-card dark:bg-dark-card rounded-xl shadow-lg overflow-hidden">
+        <iframe
+            src={url}
+            title="External Application"
+            className="w-full h-full border-0"
+            sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
+        />
+    </div>
+);
+// ===================================================
+// END: ExternalAppPage.tsx
 // ===================================================
 
 
@@ -2621,6 +2648,8 @@ const App = () => {
                 data={workloadReportData} 
                 onFileUpload={(file) => handleFileUpload(file, workloadProcessor, firebaseService.updateWorkload)} 
                 theme={theme} />;
+      case 'externalApp':
+        return <ExternalAppPage url={EXTERNAL_APP_URL} />;
       case 'reports':
         return <PlaceholderPage title={t('reports')} />;
       case 'documents':
