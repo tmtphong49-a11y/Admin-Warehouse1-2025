@@ -41,7 +41,7 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script type="importmap">
 {
   "imports": {
@@ -60,15 +60,209 @@
     <div id="root"></div>
     <script type="text/babel" data-type="module">
 // Import external dependencies
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import ReactDOM from 'react-dom/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { read, utils } from 'xlsx';
 
 
 // ===================================================
+// START: i18n/translations.ts
+// ===================================================
+const translations = {
+    en: {
+        // Sidebar
+        'kpiReport': 'KPI Report',
+        'consumablesReport': 'Consumables Report',
+        'otReport': 'OT Report',
+        'leaveReport': 'Leave Report',
+        'accidentReport': 'Accident Report',
+        'reports': 'Reports',
+        'documents': 'Documents',
+        'settings': 'Settings',
+        'helpCenter': 'Help Center',
+        'analytics': 'Analytics',
+        // Header
+        'search': 'Search...',
+        'uploadKpiData': 'Upload KPI Data',
+        'userName': 'Jane Doe',
+        'userRole': 'Admin',
+        // KPI Card
+        'vsLastMonth': 'vs last month',
+        // Main Chart
+        'kpiProgressOverview': 'KPI Progress Overview',
+        // Data Table
+        'kpiDetails': 'KPI Details',
+        'searchDetails': 'Search details...',
+        'kpi': 'KPI',
+        'target': 'Target',
+        'score': 'Score',
+        'result': 'Result',
+        'noResultsFound': 'No results found.',
+        // Consumables Report
+        'uploadExcel': 'Upload Excel',
+        'noDataLoaded': 'No Data Loaded',
+        'noDataLoadedMessageConsumables': 'Please upload an Excel file using the button above to view the report.',
+        'monthlyConsumablesCost': 'Monthly Consumables Cost',
+        'top5FrequentItems': 'Top 5 Frequent Items',
+        'frequency': 'Frequency',
+        'totalCost': 'Total Cost',
+        'costByDepartment': 'Cost by Department',
+        'department': 'Department',
+        'recentTransactions': 'Recent Transactions',
+        'searchTransactions': 'Search transactions...',
+        // OT Report
+        'noDataLoadedMessageOT': 'Please upload an Excel file using the button above to view the OT report.',
+        'monthlyOvertimeHours': 'Monthly Overtime Hours',
+        'top10EmployeesByOT': 'Top 10 Employees by OT',
+        'name': 'Name',
+        'totalHours': 'Total Hours',
+        'top10DepartmentsByOT': 'Top 10 Departments by OT',
+        'employeeOTDetails': 'Employee OT Details',
+        'searchEmployees': 'Search employees...',
+        // Leave Report
+        'noDataLoadedMessageLeave': 'Please upload an Excel file using the button above to view the Leave report.',
+        'monthlyLeaveDays': 'Monthly Leave Days',
+        'top10LeaveEmployees': 'Top 10 Employees by Leave',
+        'days': 'Days',
+        'top5LeaveTypes': 'Top 5 Leave Types',
+        'leaveType': 'Leave Type',
+        'top5LeaveDepartments': 'Top 5 Departments by Leave',
+        'employeeLeaveDetails': 'Employee Leave Details',
+        // Accident Report
+        'noDataLoadedMessageAccident': 'Please upload an Excel file using the button above to view the Accident report.',
+        'accidentsByDepartment': 'Accidents by Department',
+        'accidentDetails': 'Accident Details',
+        'searchAccidents': 'Search accidents...',
+        // Placeholder
+        'underConstruction': 'This page is under construction.',
+        // General
+        'pass': 'PASS',
+        'inProgress': 'In Progress'
+    },
+    th: {
+        // Sidebar
+        'kpiReport': 'รายงาน KPI',
+        'consumablesReport': 'รายงานวัสดุสิ้นเปลือง',
+        'otReport': 'รายงาน OT',
+        'leaveReport': 'รายงานการลา',
+        'accidentReport': 'รายงานอุบัติเหตุ',
+        'reports': 'รายงานอื่นๆ',
+        'documents': 'เอกสาร',
+        'settings': 'ตั้งค่า',
+        'helpCenter': 'ศูนย์ช่วยเหลือ',
+        'analytics': 'การวิเคราะห์',
+        // Header
+        'search': 'ค้นหา...',
+        'uploadKpiData': 'อัปโหลดข้อมูล KPI',
+        'userName': 'เจน โด',
+        'userRole': 'ผู้ดูแลระบบ',
+        // KPI Card
+        'vsLastMonth': 'เทียบกับเดือนที่แล้ว',
+        // Main Chart
+        'kpiProgressOverview': 'ภาพรวมความคืบหน้า KPI',
+        // Data Table
+        'kpiDetails': 'รายละเอียด KPI',
+        'searchDetails': 'ค้นหารายละเอียด...',
+        'kpi': 'KPI',
+        'target': 'เป้าหมาย',
+        'score': 'คะแนน',
+        'result': 'ผลลัพธ์',
+        'noResultsFound': 'ไม่พบผลลัพธ์',
+        // Consumables Report
+        'uploadExcel': 'อัปโหลด Excel',
+        'noDataLoaded': 'ไม่มีข้อมูล',
+        'noDataLoadedMessageConsumables': 'กรุณาอัปโหลดไฟล์ Excel เพื่อดูรายงาน',
+        'monthlyConsumablesCost': 'ค่าใช้จ่ายวัสดุสิ้นเปลืองรายเดือน',
+        'top5FrequentItems': '5 อันดับรายการที่ใช้บ่อยที่สุด',
+        'frequency': 'ความถี่',
+        'totalCost': 'ต้นทุนรวม',
+        'costByDepartment': 'ค่าใช้จ่ายตามแผนก',
+        'department': 'แผนก',
+        'recentTransactions': 'ธุรกรรมล่าสุด',
+        'searchTransactions': 'ค้นหาธุรกรรม...',
+        // OT Report
+        'noDataLoadedMessageOT': 'กรุณาอัปโหลดไฟล์ Excel เพื่อดูรายงาน OT',
+        'monthlyOvertimeHours': 'ชั่วโมงล่วงเวลาแต่ละเดือน',
+        'top10EmployeesByOT': '10 อันดับพนักงานที่ทำ OT สูงสุด',
+        'name': 'ชื่อ',
+        'totalHours': 'ชั่วโมงรวม',
+        'top10DepartmentsByOT': '10 อันดับแผนกที่ทำ OT สูงสุด',
+        'employeeOTDetails': 'รายละเอียด OT ของพนักงาน',
+        'searchEmployees': 'ค้นหาพนักงาน...',
+        // Leave Report
+        'noDataLoadedMessageLeave': 'กรุณาอัปโหลดไฟล์ Excel เพื่อดูรายงานการลา',
+        'monthlyLeaveDays': 'จำนวนวันลาแต่ละเดือน',
+        'top10LeaveEmployees': '10 อันดับพนักงานที่ลามากที่สุด',
+        'days': 'วัน',
+        'top5LeaveTypes': '5 อันดับประเภทการลา',
+        'leaveType': 'ประเภทการลา',
+        'top5LeaveDepartments': '5 อันดับส่วนงานที่ลามากที่สุด',
+        'employeeLeaveDetails': 'รายละเอียดการลาของพนักงาน',
+        // Accident Report
+        'noDataLoadedMessageAccident': 'กรุณาอัปโหลดไฟล์ Excel เพื่อดูรายงานอุบัติเหตุ',
+        'accidentsByDepartment': 'อุบัติเหตุตามส่วนงาน',
+        'accidentDetails': 'รายละเอียดอุบัติเหตุ',
+        'searchAccidents': 'ค้นหาอุบัติเหตุ...',
+        // Placeholder
+        'underConstruction': 'หน้านี้กำลังอยู่ระหว่างการพัฒนา',
+        // General
+        'pass': 'ผ่าน',
+        'inProgress': 'ดำเนินการอยู่'
+    }
+};
+
+const getInitialState = (key, defaultValue) => {
+    try {
+        const storedValue = localStorage.getItem(key);
+        if (storedValue) {
+            return JSON.parse(storedValue);
+        }
+    } catch (error) {
+        console.error(`Error reading "${key}" from localStorage`, error);
+        localStorage.removeItem(key);
+    }
+    return defaultValue;
+};
+
+const LanguageContext = createContext(null);
+const LanguageProvider = ({ children }) => {
+    const [language, setLanguage] = useState(getInitialState('language', 'en'));
+    useEffect(() => {
+        localStorage.setItem('language', JSON.stringify(language));
+        document.documentElement.style.fontFamily = language === 'th' ? "'Sarabun', sans-serif" : "'Inter', sans-serif";
+    }, [language]);
+    const toggleLanguage = () => {
+        setLanguage(lang => (lang === 'en' ? 'th' : 'en'));
+    };
+    const t = (key) => {
+        return translations[language][key] || key;
+    };
+    return (
+        <LanguageContext.Provider value={{ language, toggleLanguage, t }}>
+            {children}
+        </LanguageContext.Provider>
+    );
+};
+const useTranslation = () => useContext(LanguageContext);
+// ===================================================
+// END: i18n/translations.ts
+// ===================================================
+
+
+// ===================================================
 // START: components/icons/Icons.tsx
 // ===================================================
+const Bars3Icon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+    </svg>
+);
+const XMarkIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+);
 const ArchiveBoxIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
@@ -308,6 +502,7 @@ const IconComponent = ({ name, className }) => {
     }
 };
 const KPICard = ({ title, value, trend, trendDirection = 'neutral', icon, color }) => {
+  const { t } = useTranslation();
   const TrendIcon = () => {
     switch (trendDirection) {
       case 'up':
@@ -334,7 +529,7 @@ const KPICard = ({ title, value, trend, trendDirection = 'neutral', icon, color 
         <div className="flex items-center gap-2 text-md">
           <TrendIcon />
           <span className={trendColor}>{trend}</span>
-          <span className="text-light-text-secondary dark:text-dark-text-secondary">vs last month</span>
+          <span className="text-light-text-secondary dark:text-dark-text-secondary">{t('vsLastMonth')}</span>
         </div>
       )}
     </div>
@@ -374,12 +569,13 @@ const DataLabel = (props) => {
         </text>
     );
 };
-const MainChart = ({ data, title = 'KPI Progress Overview', theme }) => {
+const MainChart = ({ data, title, theme }) => {
+  const { t } = useTranslation();
   const gridColor = theme === 'dark' ? '#334155' : '#E2E8F0';
   const tickColor = theme === 'dark' ? '#94A3B8' : '#64748B';
   return (
     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl p-6 h-[480px] shadow-lg">
-      <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-6">{title}</h3>
+      <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary mb-6">{title || t('kpiProgressOverview')}</h3>
       <ResponsiveContainer width="100%" height="90%">
         <BarChart
           data={data}
@@ -411,6 +607,7 @@ const MainChart = ({ data, title = 'KPI Progress Overview', theme }) => {
 // START: components/DataTable.tsx
 // ===================================================
 const DataTable = ({ data }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const filteredData = data.filter(row => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -425,12 +622,12 @@ const DataTable = ({ data }) => {
   return (
     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
       <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
-        <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">KPI Details</h3>
+        <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('kpiDetails')}</h3>
         <div className="relative">
           <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
           <input
             type="text"
-            placeholder="Search details..."
+            placeholder={t('searchDetails')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
@@ -441,10 +638,10 @@ const DataTable = ({ data }) => {
         <table className="w-full text-left">
           <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
             <tr className="border-b border-light-border dark:border-dark-border">
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">KPI</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Target</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Score</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Result</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('kpi')}</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('target')}</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('score')}</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('result')}</th>
             </tr>
           </thead>
           <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -465,7 +662,7 @@ const DataTable = ({ data }) => {
                         ? 'bg-green-500/20 text-green-400' 
                         : 'bg-amber-500/20 text-amber-400'
                     }`}>
-                        {row.result}
+                        {row.result.toUpperCase() === 'PASS' ? t('pass') : t('inProgress')}
                     </span>
                 </td>
               </tr>
@@ -473,7 +670,7 @@ const DataTable = ({ data }) => {
             ) : (
               <tr>
                 <td colSpan={4} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                  No results found.
+                  {t('noResultsFound')}
                 </td>
               </tr>
             )}
@@ -492,6 +689,7 @@ const DataTable = ({ data }) => {
 // START: components/ConsumablesReport.tsx
 // ===================================================
 const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const { t } = useTranslation();
     const fileInputRef = useRef(null);
     const [searchTerm, setSearchTerm] = useState('');
     const handleUploadClick = () => {
@@ -575,7 +773,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                     aria-label="Upload Consumables Excel file"
                 >
                     <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>Upload Excel</span>
+                    <span>{t('uploadExcel')}</span>
                 </button>
             </div>
             {tableData.length > 0 ? (
@@ -591,11 +789,11 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                             />
                         ))}
                     </div>
-                    <MainChart data={chartData} title="Monthly Consumables Cost" theme={theme} />
+                    <MainChart data={chartData} title={t('monthlyConsumablesCost')} theme={theme} />
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 5 Frequent Items</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top5FrequentItems')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
@@ -603,8 +801,8 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Description</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-center">Frequency</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Cost</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-center">{t('frequency')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('totalCost')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -620,7 +818,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                         )) : (
                                             <tr>
                                                 <td colSpan={4} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                                    No data available.
+                                                    {t('noDataLoaded')}
                                                 </td>
                                             </tr>
                                         )}
@@ -630,14 +828,14 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                         </div>
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Cost by Department</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('costByDepartment')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Cost</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('department')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('totalCost')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -651,7 +849,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                         )) : (
                                             <tr>
                                                 <td colSpan={2} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                                    No data for specified departments.
+                                                    {t('noDataLoaded')}
                                                 </td>
                                             </tr>
                                         )}
@@ -662,12 +860,12 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                     </div>
                     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                         <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
-                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Recent Transactions</h3>
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('recentTransactions')}</h3>
                              <div className="relative">
                                 <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
                                 <input
                                     type="text"
-                                    placeholder="Search transactions..."
+                                    placeholder={t('searchTransactions')}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
@@ -701,7 +899,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                                     ) : (
                                         <tr>
                                             <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                            No results found.
+                                            {t('noResultsFound')}
                                             </td>
                                         </tr>
                                     )}
@@ -714,9 +912,9 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
                 <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
                     <div className="text-center">
                         <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
-                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">{t('noDataLoaded')}</h3>
                         <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                            Please upload an Excel file using the button above to view the report.
+                            {t('noDataLoadedMessageConsumables')}
                         </p>
                     </div>
                 </div>
@@ -733,6 +931,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
 // START: components/OTReport.tsx
 // ===================================================
 const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const { t } = useTranslation();
     const fileInputRef = useRef(null);
     const [searchTerm, setSearchTerm] = useState('');
     const handleUploadClick = () => {
@@ -793,7 +992,7 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                     aria-label="Upload OT Excel file"
                 >
                     <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>Upload Excel</span>
+                    <span>{t('uploadExcel')}</span>
                 </button>
             </div>
             {tableData.length > 0 ? (
@@ -809,20 +1008,20 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                             />
                         ))}
                     </div>
-                    <MainChart data={chartData} title="Monthly Overtime Hours" theme={theme} />
+                    <MainChart data={chartData} title={t('monthlyOvertimeHours')} theme={theme} />
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 10 Employees by OT</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top10EmployeesByOT')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Name</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Hours</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('name')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('department')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('totalHours')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -840,15 +1039,15 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                         </div>
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Top 10 Departments by OT</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top10DepartmentsByOT')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Total Hours</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('department')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('totalHours')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -866,12 +1065,12 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                     </div>
                     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                         <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
-                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Employee OT Details</h3>
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('employeeOTDetails')}</h3>
                             <div className="relative">
                                 <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
                                 <input
                                     type="text"
-                                    placeholder="Search employees..."
+                                    placeholder={t('searchEmployees')}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
@@ -907,7 +1106,7 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                                     ) : (
                                         <tr>
                                             <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                                No results found.
+                                                {t('noResultsFound')}
                                             </td>
                                         </tr>
                                     )}
@@ -920,9 +1119,9 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                 <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
                     <div className="text-center">
                         <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
-                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">{t('noDataLoaded')}</h3>
                         <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                            Please upload an Excel file using the button above to view the OT report.
+                            {t('noDataLoadedMessageOT')}
                         </p>
                     </div>
                 </div>
@@ -939,6 +1138,7 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
 // START: components/LeaveReport.tsx
 // ===================================================
 const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const { t } = useTranslation();
     const fileInputRef = useRef(null);
     const [searchTerm, setSearchTerm] = useState('');
     const handleUploadClick = () => {
@@ -1019,7 +1219,7 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                     aria-label="Upload Leave Excel file"
                 >
                     <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>Upload Excel</span>
+                    <span>{t('uploadExcel')}</span>
                 </button>
             </div>
             {tableData.length > 0 ? (
@@ -1035,20 +1235,20 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                             />
                         ))}
                     </div>
-                    <MainChart data={chartData} title="Monthly Leave Days" theme={theme}/>
+                    <MainChart data={chartData} title={t('monthlyLeaveDays')} theme={theme}/>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">10 อันดับพนักงานที่ลามากที่สุด</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top10LeaveEmployees')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Name</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Dept</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('name')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('department')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('days')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -1066,15 +1266,15 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                         </div>
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">5 อันดับประเภทการลา</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top5LeaveTypes')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Leave Type</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('leaveType')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('days')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -1091,15 +1291,15 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                         </div>
                         <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                             <div className="p-6 border-b border-light-border dark:border-dark-border">
-                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">5 อันดับส่วนงานที่ลามากที่สุด</h3>
+                                <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('top5LeaveDepartments')}</h3>
                             </div>
                             <div className="overflow-auto">
                                 <table className="w-full text-left">
                                     <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
                                         <tr className="border-b border-light-border dark:border-dark-border">
                                             <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">#</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Department</th>
-                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Days</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('department')}</th>
+                                            <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('days')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -1117,12 +1317,12 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                     </div>
                     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                         <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
-                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Employee Leave Details</h3>
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('employeeLeaveDetails')}</h3>
                             <div className="relative">
                                 <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
                                 <input
                                     type="text"
-                                    placeholder="Search employees..."
+                                    placeholder={t('searchEmployees')}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
@@ -1169,7 +1369,7 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                                     ) : (
                                         <tr>
                                             <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                                No results found.
+                                                {t('noResultsFound')}
                                             </td>
                                         </tr>
                                     )}
@@ -1182,9 +1382,9 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
                 <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
                     <div className="text-center">
                         <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
-                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">{t('noDataLoaded')}</h3>
                         <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                            Please upload an Excel file using the button above to view the Leave report.
+                            {t('noDataLoadedMessageLeave')}
                         </p>
                     </div>
                 </div>
@@ -1201,6 +1401,7 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
 // START: components/AccidentReport.tsx
 // ===================================================
 const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
+    const { t } = useTranslation();
     const fileInputRef = useRef(null);
     const [searchTerm, setSearchTerm] = useState('');
     const handleUploadClick = () => {
@@ -1234,7 +1435,7 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
                     aria-label="Upload Accident Excel file"
                 >
                     <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>Upload Excel</span>
+                    <span>{t('uploadExcel')}</span>
                 </button>
             </div>
             {tableData.length > 0 ? (
@@ -1251,16 +1452,16 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
                         ))}
                     </div>
                     <div className="mb-8 bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-6">
-                        <MainChart data={chartData} title="อุบัติเหตุตามส่วนงาน" theme={theme} />
+                        <MainChart data={chartData} title={t('accidentsByDepartment')} theme={theme} />
                     </div>
                     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
                         <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-center flex-wrap gap-4">
-                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">Accident Details</h3>
+                            <h3 className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('accidentDetails')}</h3>
                             <div className="relative">
                                 <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
                                 <input
                                     type="text"
-                                    placeholder="Search accidents..."
+                                    placeholder={t('searchAccidents')}
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary w-full sm:w-64"
@@ -1303,7 +1504,7 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
                                     ) : (
                                         <tr>
                                             <td colSpan={headers.length} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
-                                                No results found.
+                                                {t('noResultsFound')}
                                             </td>
                                         </tr>
                                     )}
@@ -1316,9 +1517,9 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
                 <div className="mt-8 flex items-center justify-center bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg p-16">
                     <div className="text-center">
                         <DocumentTextIcon className="mx-auto h-12 w-12 text-light-text-secondary dark:text-dark-text-secondary" />
-                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">No Data Loaded</h3>
+                        <h3 className="mt-4 text-lg font-medium text-light-text-primary dark:text-dark-text-primary">{t('noDataLoaded')}</h3>
                         <p className="mt-1 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                            Please upload an Excel file using the button above to view the Accident report.
+                            {t('noDataLoadedMessageAccident')}
                         </p>
                     </div>
                 </div>
@@ -1348,40 +1549,46 @@ const NavLink = ({ icon, text, active, onClick }) => (
     {text}
   </button>
 );
-const Sidebar = ({ activePage, onNavigate }) => {
+const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
+  const { t } = useTranslation();
   const navItems = [
-    { name: 'รายงาน KPI', icon: <HomeIcon className="h-6 w-6" /> },
-    { name: 'รายงานวัสดุสิ้นเปลือง', icon: <ClipboardDocumentListIcon className="h-6 w-6" /> },
-    { name: 'รายงานOT', icon: <ClockIcon className="h-6 w-6" /> },
-    { name: 'รายงานการลา', icon: <CalendarDaysIcon className="h-6 w-6" /> },
-    { name: 'รายงานอุบัติเหตุ', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
-    { name: 'Reports', icon: <ChartPieIcon className="h-6 w-6" /> },
-    { name: 'Documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
-    { name: 'Settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
+    { key: 'kpiReport', icon: <HomeIcon className="h-6 w-6" /> },
+    { key: 'consumablesReport', icon: <ClipboardDocumentListIcon className="h-6 w-6" /> },
+    { key: 'otReport', icon: <ClockIcon className="h-6 w-6" /> },
+    { key: 'leaveReport', icon: <CalendarDaysIcon className="h-6 w-6" /> },
+    { key: 'accidentReport', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
+    { key: 'reports', icon: <ChartPieIcon className="h-6 w-6" /> },
+    { key: 'documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
+    { key: 'settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
   ];
   return (
-    <aside className="w-64 flex-shrink-0 bg-light-card dark:bg-dark-card border-r border-light-border dark:border-dark-border p-6 flex-col hidden lg:flex">
-      <div className="flex items-center mb-10">
-        <BoltIcon className="h-10 w-10 text-brand-primary" />
-        <span className="text-2xl font-bold ml-3 text-light-text-primary dark:text-dark-text-primary">Analytics</span>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-64 flex-shrink-0 bg-light-card dark:bg-dark-card border-r border-light-border dark:border-dark-border p-6 flex flex-col transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center">
+            <BoltIcon className="h-10 w-10 text-brand-primary" />
+            <span className="text-2xl font-bold ml-3 text-light-text-primary dark:text-dark-text-primary">{t('analytics')}</span>
+        </div>
+        <button onClick={onClose} className="lg:hidden text-light-text-secondary dark:text-dark-text-secondary">
+            <XMarkIcon className="h-6 w-6" />
+        </button>
       </div>
       <nav className="flex-1 flex flex-col gap-3">
         {navItems.map((item) => (
           <NavLink
-            key={item.name}
+            key={item.key}
             icon={item.icon}
-            text={item.name}
-            active={activePage === item.name}
-            onClick={() => onNavigate(item.name)}
+            text={t(item.key)}
+            active={activePage === item.key}
+            onClick={() => onNavigate(item.key)}
           />
         ))}
       </nav>
       <div className="mt-auto">
         <NavLink 
           icon={<QuestionMarkCircleIcon className="h-6 w-6" />} 
-          text="Help Center" 
-          active={activePage === 'Help Center'}
-          onClick={() => onNavigate('Help Center')}
+          text={t('helpCenter')}
+          active={activePage === 'helpCenter'}
+          onClick={() => onNavigate('helpCenter')}
         />
       </div>
     </aside>
@@ -1395,7 +1602,8 @@ const Sidebar = ({ activePage, onNavigate }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick }) => {
+  const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -1409,18 +1617,21 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
   return (
     <header className="bg-light-card dark:bg-dark-card border-b border-light-border dark:border-dark-border p-4 shadow-sm flex items-center justify-between">
       <div className="flex items-center">
-        <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{activePage}</h1>
+         <button onClick={onMenuClick} className="lg:hidden mr-4 text-light-text-secondary dark:text-dark-text-secondary" aria-label="Open menu">
+            <Bars3Icon className="h-6 w-6" />
+        </button>
+        <h1 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{t(activePage)}</h1>
       </div>
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         <div className="relative hidden md:block">
           <MagnifyingGlassIcon className="h-5 w-5 absolute top-1/2 left-3 -translate-y-1/2 text-light-text-secondary dark:text-dark-text-secondary" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder={t('search')}
             className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
           />
         </div>
-        {activePage === 'รายงาน KPI' && (
+        {activePage === 'kpiReport' && (
           <>
             <input
                 type="file"
@@ -1435,7 +1646,7 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
                 aria-label="Upload KPI data file"
             >
                 <ArrowUpTrayIcon className="h-5 w-5" />
-                <span className='hidden sm:inline'>Upload KPI Data</span>
+                <span className='hidden sm:inline'>{t('uploadKpiData')}</span>
             </button>
           </>
         )}
@@ -1445,6 +1656,13 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
           aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
         >
           {theme === 'dark' ? <SunIcon className="h-6 w-6" /> : <MoonIcon className="h-6 w-6" />}
+        </button>
+        <button
+          onClick={toggleLanguage}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors font-semibold text-sm w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-dark-border"
+          aria-label="Toggle language"
+        >
+          {language === 'en' ? 'TH' : 'EN'}
         </button>
         <button className="relative text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors">
           <BellIcon className="h-6 w-6" />
@@ -1460,8 +1678,8 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
                 className="h-10 w-10 rounded-full border-2 border-brand-primary"
             />
             <div className='hidden sm:block'>
-                <p className="font-semibold text-light-text-primary dark:text-dark-text-primary">Jane Doe</p>
-                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">Admin</p>
+                <p className="font-semibold text-light-text-primary dark:text-dark-text-primary">{t('userName')}</p>
+                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{t('userRole')}</p>
             </div>
         </div>
       </div>
@@ -1476,31 +1694,24 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme }) => {
 // ===================================================
 // START: App.tsx
 // ===================================================
-const getInitialState = (key, defaultValue) => {
-    try {
-        const storedValue = localStorage.getItem(key);
-        if (storedValue) {
-            return JSON.parse(storedValue);
-        }
-    } catch (error) {
-        console.error(`Error reading "${key}" from localStorage`, error);
-        localStorage.removeItem(key);
-    }
-    return defaultValue;
+const PlaceholderPage = ({ title }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="flex items-center justify-center h-full w-full">
+            <div className="text-center">
+            <h1 className="text-4xl font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-tight">{title}</h1>
+            <p className="mt-2 text-lg text-light-text-secondary dark:text-dark-text-secondary">{t('underConstruction')}</p>
+            </div>
+        </div>
+    );
 };
-const PlaceholderPage = ({ title }) => (
-  <div className="flex items-center justify-center h-full w-full">
-    <div className="text-center">
-      <h1 className="text-4xl font-bold text-light-text-secondary dark:text-dark-text-secondary tracking-tight">{title}</h1>
-      <p className="mt-2 text-lg text-light-text-secondary dark:text-dark-text-secondary">This page is under construction.</p>
-    </div>
-  </div>
-);
+
 const App = () => {
+  const { t } = useTranslation();
   const [kpis, setKpis] = useState(getInitialState('kpis', kpiData));
   const [chartData, setChartData] = useState(getInitialState('chartData', mainChartData));
   const [tableRows, setTableRows] = useState(getInitialState('tableRows', tableData));
-  const [activePage, setActivePage] = useState(getInitialState('activePage', 'รายงาน KPI'));
+  const [activePage, setActivePage] = useState(getInitialState('activePage', 'kpiReport'));
   const [consumablesTableData, setConsumablesTableData] = useState(getInitialState('consumablesTableData', []));
   const [consumablesKpis, setConsumablesKpis] = useState(getInitialState('consumablesKpis', []));
   const [consumablesChartData, setConsumablesChartData] = useState(getInitialState('consumablesChartData', []));
@@ -1514,6 +1725,7 @@ const App = () => {
   const [accidentKpis, setAccidentKpis] = useState(getInitialState('accidentKpis', []));
   const [accidentChartData, setAccidentChartData] = useState(getInitialState('accidentChartData', []));
   const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleTheme = () => {
       setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
@@ -1560,6 +1772,11 @@ const App = () => {
     localStorage.setItem('accidentKpis', JSON.stringify(accidentKpis));
     localStorage.setItem('accidentChartData', JSON.stringify(accidentChartData));
   }, [accidentTableData, accidentKpis, accidentChartData]);
+  
+  const handleNavigate = (page) => {
+    setActivePage(page);
+    setIsSidebarOpen(false);
+  };
 
   const handleDashboardFileUpload = (file) => {
     if (!file) return;
@@ -1618,7 +1835,7 @@ const App = () => {
             setKpis(newKpis.slice(0, 4));
             setChartData(newChartData);
             setTableRows(newTableRows);
-            setActivePage('รายงาน KPI');
+            setActivePage('kpiReport');
         } catch (error) {
             console.error("Error processing Excel file:", error);
             alert("Failed to process the Excel file. Please ensure it's in the correct format.");
@@ -1980,7 +2197,7 @@ const App = () => {
   };
   const renderContent = () => {
     switch (activePage) {
-      case 'รายงาน KPI':
+      case 'kpiReport':
         return (
           <div className="container mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -2002,7 +2219,7 @@ const App = () => {
             </div>
           </div>
         );
-      case 'รายงานวัสดุสิ้นเปลือง':
+      case 'consumablesReport':
         return <ConsumablesReport 
                   tableData={consumablesTableData}
                   kpis={consumablesKpis}
@@ -2010,7 +2227,7 @@ const App = () => {
                   onFileUpload={handleConsumablesFileUpload}
                   theme={theme}
                 />;
-      case 'รายงานOT':
+      case 'otReport':
         return <OTReport
                   tableData={otTableData}
                   kpis={otKpis}
@@ -2018,7 +2235,7 @@ const App = () => {
                   onFileUpload={handleOTFileUpload}
                   theme={theme}
                 />;
-      case 'รายงานการลา':
+      case 'leaveReport':
         return <LeaveReport
                   tableData={leaveTableData}
                   kpis={leaveKpis}
@@ -2026,7 +2243,7 @@ const App = () => {
                   onFileUpload={handleLeaveFileUpload}
                   theme={theme}
                 />;
-      case 'รายงานอุบัติเหตุ':
+      case 'accidentReport':
         return <AccidentReport
                   tableData={accidentTableData}
                   kpis={accidentKpis}
@@ -2034,23 +2251,30 @@ const App = () => {
                   onFileUpload={handleAccidentFileUpload}
                   theme={theme}
                 />;
-      case 'Reports':
-        return <PlaceholderPage title="Reports" />;
-      case 'Documents':
-        return <PlaceholderPage title="Documents" />;
-      case 'Settings':
-        return <PlaceholderPage title="Settings" />;
-      case 'Help Center':
-        return <PlaceholderPage title="Help Center" />;
+      case 'reports':
+        return <PlaceholderPage title={t('reports')} />;
+      case 'documents':
+        return <PlaceholderPage title={t('documents')} />;
+      case 'settings':
+        return <PlaceholderPage title={t('settings')} />;
+      case 'helpCenter':
+        return <PlaceholderPage title={t('helpCenter')} />;
       default:
         return <PlaceholderPage title="Page Not Found" />;
     }
   };
   return (
     <div className="flex h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
-      <Sidebar activePage={activePage} onNavigate={setActivePage} />
+      {isSidebarOpen && (
+            <div
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                onClick={() => setIsSidebarOpen(false)}
+                aria-hidden="true"
+            ></div>
+        )}
+      <Sidebar activePage={activePage} onNavigate={handleNavigate} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onFileUpload={handleDashboardFileUpload} activePage={activePage} theme={theme} toggleTheme={toggleTheme} />
+        <Header onFileUpload={handleDashboardFileUpload} activePage={activePage} theme={theme} toggleTheme={toggleTheme} onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
         </main>
@@ -2073,7 +2297,9 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <LanguageProvider>
+      <App />
+    </LanguageProvider>
   </React.StrictMode>
 );
 // ===================================================
