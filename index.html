@@ -35,20 +35,6 @@
             fontFamily: {
                 sans: ['Inter', 'sans-serif'],
             },
-            keyframes: {
-              slideIn: {
-                '0%': { transform: 'translateY(100%)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              slideOut: {
-                '0%': { transform: 'translateY(0)', opacity: '1' },
-                '100%': { transform: 'translateY(100%)', opacity: '0' },
-              },
-            },
-            animation: {
-              slideIn: 'slideIn 0.5s ease-out forwards',
-              slideOut: 'slideOut 0.5s ease-in forwards',
-            }
           }
         }
       }
@@ -65,9 +51,11 @@
     "recharts/": "https://aistudiocdn.com/recharts@^3.2.1/",
     "recharts": "https://aistudiocdn.com/recharts@^3.2.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-latest/package/xlsx.mjs",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js"
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
+    "firebase/storage": "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"
   }
 }
 </script>
@@ -81,200 +69,110 @@ import React, { useState, useEffect, useRef, useMemo, createContext, useContext 
 import ReactDOM from 'react-dom/client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList, LineChart, Line, Legend } from 'recharts';
 import { read, utils } from 'xlsx';
+
+// Import Firebase dependencies
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
-// ===================================================
-// START: Firebase Configuration & Service
-// ===================================================
-
-// Your web app's Firebase configuration
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBHguqBiwres4qMDstnaq-4KYQiRb0JTgE",
   authDomain: "admin-wh1.firebaseapp.com",
   projectId: "admin-wh1",
-  storageBucket: "admin-wh1.appspot.com",
+  storageBucket: "admin-wh1.firebasestorage.app",
   messagingSenderId: "1072795813221",
   appId: "1:1072795813221:web:e27f6787c25c734d83cd8c",
   measurementId: "G-CEK74QFCW8"
 };
 
-// Initialize Firebase variables
-let app;
-let db;
-let analytics;
-
 // Initialize Firebase
-try {
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  analytics = getAnalytics(app);
-  console.log('Firebase initialized successfully');
-} catch (error) {
-  console.error('Error initializing Firebase:', error);
-  // ถ้าเกิดข้อผิดพลาด ให้แสดงข้อความแจ้งเตือนผู้ใช้
-  alert('ไม่สามารถเชื่อมต่อกับ Firebase ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง');
-}
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
-// กำหนดชื่อ Collections แยกตามเมนู
-const COLLECTIONS = {
-  KPI: 'kpi_reports',
-  CONSUMABLES: 'consumables_reports',
-  OT: 'ot_reports',
-  LEAVE: 'leave_reports',
-  ACCIDENT: 'accident_reports',
-  WORKLOAD: 'workload_reports'
-};
+// Firebase connection status
+let firebaseConnected = false;
 
-// โครงสร้างข้อมูลเริ่มต้นสำหรับแต่ละเมนู
-const defaultData = {
-  kpi: {
-    kpis: [],
-    chartData: [],
-    tableRows: [],
-    lastUpdated: new Date()
-  },
-  consumables: {
-    tableData: [],
-    kpis: [],
-    chartData: [],
-    lastUpdated: new Date()
-  },
-  ot: {
-    tableData: [],
-    kpis: [],
-    chartData: [],
-    lastUpdated: new Date()
-  },
-  leave: {
-    tableData: [],
-    kpis: [],
-    chartData: [],
-    lastUpdated: new Date()
-  },
-  accident: {
-    tableData: [],
-    kpis: [],
-    chartData: [],
-    lastUpdated: new Date()
-  },
-  workload: {
-    data: [],
-    lastUpdated: new Date()
+// Test Firebase connection
+const testFirebaseConnection = async () => {
+  try {
+    // Sign in anonymously to test connection
+    await signInAnonymously(auth);
+    firebaseConnected = true;
+    console.log('✅ Firebase connected successfully!');
+    
+    // Test Firestore connection
+    const testCollection = collection(db, 'test');
+    console.log('✅ Firestore connection established!');
+    
+    return true;
+  } catch (error) {
+    console.error('❌ Firebase connection failed:', error);
+    firebaseConnected = false;
+    return false;
   }
 };
 
-const firebaseService = {
-  // ฟังก์ชันสำหรับสร้าง document ID แบบอัตโนมัติตามเดือนและปี
-  generateDocId: () => {
-    const now = new Date();
-    return `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
-  },
+// Initialize Firebase connection on app start
+testFirebaseConnection();
 
-  // ฟังก์ชันสำหรับดึง reference ของ document
-  getDocRef: (collection, docId = firebaseService.generateDocId()) => {
-    return doc(db, collection, docId);
-  },
+// Firestore helper functions
+const saveToFirestore = async (collectionName, data, docId = null) => {
+  try {
+    if (!firebaseConnected) {
+      console.warn('Firebase not connected. Data saved to localStorage only.');
+      return null;
+    }
 
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล KPI
-  updateKpi: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.KPI);
-    await setDoc(docRef, { ...defaultData.kpi, ...data, lastUpdated: new Date() });
-  },
+    const timestamp = new Date().toISOString();
+    const dataWithTimestamp = {
+      ...data,
+      createdAt: timestamp,
+      updatedAt: timestamp
+    };
 
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลวัสดุสิ้นเปลือง
-  updateConsumables: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.CONSUMABLES);
-    await setDoc(docRef, { ...defaultData.consumables, ...data, lastUpdated: new Date() });
-  },
-
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล OT
-  updateOt: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.OT);
-    await setDoc(docRef, { ...defaultData.ot, ...data, lastUpdated: new Date() });
-  },
-
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลการลา
-  updateLeave: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.LEAVE);
-    await setDoc(docRef, { ...defaultData.leave, ...data, lastUpdated: new Date() });
-  },
-
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูลอุบัติเหตุ
-  updateAccident: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.ACCIDENT);
-    await setDoc(docRef, { ...defaultData.accident, ...data, lastUpdated: new Date() });
-  },
-
-  // ฟังก์ชันสำหรับสร้างหรืออัพเดทข้อมูล Workload
-  updateWorkload: async (data) => {
-    const docRef = firebaseService.getDocRef(COLLECTIONS.WORKLOAD);
-    await setDoc(docRef, { ...defaultData.workload, ...data, lastUpdated: new Date() });
-  },
-
-  // ฟังก์ชันสำหรับดึงข้อมูลล่าสุดของแต่ละเมนู
-  getLatestData: async (collection) => {
-    const docRef = firebaseService.getDocRef(collection);
-    const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? docSnap.data() : null;
+    let docRef;
+    if (docId) {
+      // Update existing document
+      docRef = doc(db, collectionName, docId);
+      await updateDoc(docRef, { ...dataWithTimestamp, updatedAt: timestamp });
+      console.log(`✅ Updated document in ${collectionName}:`, docId);
+    } else {
+      // Create new document
+      docRef = await addDoc(collection(db, collectionName), dataWithTimestamp);
+      console.log(`✅ Saved to Firestore collection ${collectionName}:`, docRef.id);
+    }
+    
+    return docRef.id;
+  } catch (error) {
+    console.error(`❌ Error saving to Firestore collection ${collectionName}:`, error);
+    return null;
   }
 };
 
-// ===================================================
-// END: Firebase Configuration & Service
-// ===================================================
-
-
-// ===================================================
-// START: Utility Functions
-// ===================================================
-
-/**
- * Deeply sanitizes an object, removing any circular references and converting
- * Firestore Timestamps to JS Date objects. This is crucial for safely setting
- * state, especially when Firestore is in offline mode.
- * @param {any} obj The object to sanitize.
- * @param {WeakMap} [seen=new WeakMap()] Used internally to track visited objects.
- * @returns {any} The sanitized object.
- */
-const sanitizeData = (obj, seen = new WeakMap()) => {
-    if (obj === null || typeof obj !== 'object') {
-        return obj;
-    }
-    // Convert Firestore Timestamps
-    if (typeof obj.toDate === 'function') {
-        return obj.toDate();
-    }
-    // Detect and break circular references
-    if (seen.has(obj)) {
-        return undefined; 
-    }
-    seen.set(obj, true);
-
-    if (Array.isArray(obj)) {
-        const newArr = [];
-        for (const item of obj) {
-            newArr.push(sanitizeData(item, seen));
-        }
-        return newArr;
+const getFromFirestore = async (collectionName) => {
+  try {
+    if (!firebaseConnected) {
+      console.warn('Firebase not connected. Cannot retrieve data from Firestore.');
+      return [];
     }
 
-    const newObj = {};
-    for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            const sanitizedValue = sanitizeData(obj[key], seen);
-            if (sanitizedValue !== undefined) {
-                newObj[key] = sanitizedValue;
-            }
-        }
-    }
-    return newObj;
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    const data = [];
+    querySnapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
+    
+    console.log(`✅ Retrieved ${data.length} documents from ${collectionName}`);
+    return data;
+  } catch (error) {
+    console.error(`❌ Error getting data from Firestore collection ${collectionName}:`, error);
+    return [];
+  }
 };
-
-// ===================================================
-// END: Utility Functions
-// ===================================================
 
 
 // ===================================================
@@ -289,7 +187,6 @@ const translations = {
         'leaveReport': 'Leave Report',
         'accidentReport': 'Accident Report',
         'workloadReport': 'Workload Report',
-        'externalApp': 'Warehouse Report',
         'reports': 'Reports',
         'documents': 'Documents',
         'settings': 'Settings',
@@ -298,10 +195,9 @@ const translations = {
         // Header
         'search': 'Search...',
         'uploadKpiData': 'Upload KPI Data',
-        'live': 'Live',
-        'connecting': 'Connecting...',
-        'offline': 'Offline',
-        'userName': 'Admin-WH1',
+        'shareReport': 'Share Report',
+        'loadReport': 'Load Report',
+        'userName': 'Jane Doe',
         'userRole': 'Admin',
         // KPI Card
         'vsLastMonth': 'vs last month',
@@ -333,7 +229,7 @@ const translations = {
         'top10EmployeesByOT': 'Top 10 Employees by OT',
         'name': 'Name',
         'totalHours': 'Total Hours',
-        'top10DepartmentsByOT': '10 Departments by OT',
+        'top10DepartmentsByOT': 'Top 10 Departments by OT',
         'employeeOTDetails': 'Employee OT Details',
         'searchEmployees': 'Search employees...',
         // Leave Report
@@ -343,7 +239,7 @@ const translations = {
         'days': 'Days',
         'top5LeaveTypes': 'Top 5 Leave Types',
         'leaveType': 'Leave Type',
-        'top5LeaveDepartments': '5 Top Departments by Leave',
+        'top5LeaveDepartments': 'Top 5 Departments by Leave',
         'employeeLeaveDetails': 'Employee Leave Details',
         // Accident Report
         'noDataLoadedMessageAccident': 'Please upload an Excel file using the button above to view the Accident report.',
@@ -363,18 +259,7 @@ const translations = {
         'underConstruction': 'This page is under construction.',
         // General
         'pass': 'PASS',
-        'inProgress': 'In Progress',
-        'toastSuccess': 'Dashboard updated successfully!',
-        // Error Screen
-        'dbConnectionFailed': 'Database Connection Failed',
-        'dbConnectionFailedMessage': "Could not connect to the database. The app will work in offline mode with cached data, but changes won't be saved.",
-        'errorDetails': 'Error Details',
-        'errorCode': 'Code',
-        'errorMessage': 'Message',
-        'possibleSolution': 'Possible Solution',
-        'suggestionPermissionDenied': "This is a 'permission-denied' error, which is very common for new projects. Please check your Firestore Security Rules in the Firebase console. For development, you can set them to allow reads and writes:",
-        'suggestionUnavailable': "The Firestore backend is unavailable or the network is weak. Check your internet connection. A firewall might be blocking the connection.",
-        'suggestionDefault': "Please check your internet connection and ensure your Firebase project (ID: 'admin-wh1') is set up correctly, including creating a Firestore database in the correct region."
+        'inProgress': 'In Progress'
     },
     th: {
         // Sidebar
@@ -384,7 +269,6 @@ const translations = {
         'leaveReport': 'รายงานการลา',
         'accidentReport': 'รายงานอุบัติเหตุ',
         'workloadReport': 'ปริมาณการทำงานต่อคน',
-        'externalApp': 'รายงานคลังสินค้า',
         'reports': 'รายงานอื่นๆ',
         'documents': 'เอกสาร',
         'settings': 'ตั้งค่า',
@@ -393,9 +277,8 @@ const translations = {
         // Header
         'search': 'ค้นหา...',
         'uploadKpiData': 'อัปโหลดข้อมูล KPI',
-        'live': 'ออนไลน์',
-        'connecting': 'กำลังเชื่อมต่อ...',
-        'offline': 'ออฟไลน์',
+        'shareReport': 'แชร์รายงาน',
+        'loadReport': 'โหลดรายงาน',
         'userName': 'เจน โด',
         'userRole': 'ผู้ดูแลระบบ',
         // KPI Card
@@ -458,18 +341,7 @@ const translations = {
         'underConstruction': 'หน้านี้กำลังอยู่ระหว่างการพัฒนา',
         // General
         'pass': 'ผ่าน',
-        'inProgress': 'ดำเนินการอยู่',
-        'toastSuccess': 'อัปเดตแดชบอร์ดสำเร็จ!',
-        // Error Screen
-        'dbConnectionFailed': 'การเชื่อมต่อฐานข้อมูลล้มเหลว',
-        'dbConnectionFailedMessage': 'ไม่สามารถเชื่อมต่อกับฐานข้อมูลได้ แอปจะทำงานในโหมดออฟไลน์ด้วยข้อมูลที่แคชไว้ แต่การเปลี่ยนแปลงจะไม่ถูกบันทึก',
-        'errorDetails': 'รายละเอียดข้อผิดพลาด',
-        'errorCode': 'รหัส',
-        'errorMessage': 'ข้อความ',
-        'possibleSolution': 'แนวทางการแก้ไขที่เป็นไปได้',
-        'suggestionPermissionDenied': 'เกิดข้อผิดพลาด \'permission-denied\' (ไม่มีสิทธิ์เข้าถึง) ซึ่งเป็นปัญหาที่พบบ่อยมากสำหรับโปรเจกต์ใหม่ กรุณาตรวจสอบ Firestore Security Rules ใน Firebase console ของคุณ สำหรับการพัฒนา คุณสามารถตั้งค่าให้อนุญาตการอ่านและเขียนได้ดังนี้:',
-        'suggestionUnavailable': 'ไม่สามารถเข้าถึง Firestore ได้ในขณะนี้ หรือการเชื่อมต่อเครือข่ายไม่เสถียร กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต และตรวจสอบว่ามีไฟร์วอลล์บล็อกการเชื่อมต่อหรือไม่',
-        'suggestionDefault': 'กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต และตรวจสอบให้แน่ใจว่าโปรเจกต์ Firebase (ID: \'admin-wh1\') ของคุณถูกตั้งค่าอย่างถูกต้อง รวมถึงการสร้างฐานข้อมูล Firestore ใน region ที่ถูกต้องด้วย'
+        'inProgress': 'ดำเนินการอยู่'
     }
 };
 
@@ -514,11 +386,6 @@ const useTranslation = () => useContext(LanguageContext);
 // ===================================================
 // START: components/icons/Icons.tsx
 // ===================================================
-const ArrowTopRightOnSquareIcon = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-    </svg>
-);
 const Bars3Icon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -661,21 +528,14 @@ const MoonIcon = (props) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z" />
     </svg>
 );
-const WifiIcon = (props) => (
+const ShareIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-4.5 0V6m0 0h4.5m-4.5 0-6 6" />
     </svg>
 );
-const WifiSlashIcon = (props) => (
+const ArrowDownTrayIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 0 1-6.364 0M17.486 12.914a9 9 0 0 1-10.972 0M19.79 10.646a13.5 13.5 0 0 1-15.58 0M21 21l-9-9-9 9" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.03 8.968a13.5 13.5 0 0 1 15.94 0M8.465 13.393a4.5 4.5 0 0 1 7.07 0" />
-    </svg>
-);
-
-const CheckCircleIcon = (props) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
     </svg>
 );
 // ===================================================
@@ -686,6 +546,86 @@ const CheckCircleIcon = (props) => (
 // ===================================================
 // START: constants.tsx
 // ===================================================
+const kpiData = [
+  {
+    title: 'Total Revenue',
+    value: '$48,329.50',
+    trend: '+12.5%',
+    trendDirection: 'up',
+    icon: 'CurrencyDollarIcon',
+    color: 'text-brand-success',
+  },
+  {
+    title: 'Total Sales',
+    value: '12,834',
+    trend: '+8.2%',
+    trendDirection: 'up',
+    icon: 'ShoppingCartIcon',
+    color: 'text-brand-primary',
+  },
+  {
+    title: 'New Customers',
+    value: '849',
+    trend: '-1.8%',
+    trendDirection: 'down',
+    icon: 'UsersIcon',
+    color: 'text-brand-warning',
+  },
+  {
+    title: 'Conversion Rate',
+    value: '4.75%',
+    trend: '+0.5%',
+    trendDirection: 'up',
+    icon: 'ChartBarIcon',
+    color: 'text-brand-secondary',
+  },
+];
+const mainChartData = [
+    { name: 'Jan', value: 2400 },
+    { name: 'Feb', value: 3100 },
+    { name: 'Mar', value: 2900 },
+    { name: 'Apr', value: 4200 },
+    { name: 'May', value: 3800 },
+    { name: 'Jun', value: 5100 },
+    { name: 'Jul', value: 4900 },
+    { name: 'Aug', value: 5800 },
+    { name: 'Sep', value: 5300 },
+    { name: 'Oct', value: 6400 },
+    { name: 'Nov', value: 7200 },
+    { name: 'Dec', value: 8100 },
+];
+const tableData = [
+  {
+    kpi: { title: 'Premium Wireless Headphones', measurement: 'Electronics' },
+    target: '1500 sales',
+    score: '1250',
+    result: 'In Progress',
+  },
+  {
+    kpi: { title: 'Organic Matcha Green Tea', measurement: 'Groceries' },
+    target: '1000 sales',
+    score: '980',
+    result: 'In Progress',
+  },
+  {
+    kpi: { title: 'Smart Fitness Tracker', measurement: 'Wearables' },
+    target: '800 sales',
+    score: '820',
+    result: 'PASS',
+  },
+  {
+    kpi: { title: 'Ergonomic Office Chair', measurement: 'Furniture' },
+    target: '500 sales',
+    score: '450',
+    result: 'In Progress',
+  },
+    {
+    kpi: { title: 'Cold Brew Coffee Maker', measurement: 'Home Goods' },
+    target: '300 sales',
+    score: '310',
+    result: 'PASS',
+  },
+];
 const parseValue = (val) => {
     if (val === '-' || val === '#DIV/0!' || val == null || String(val).trim() === '') return null;
     if (typeof val === 'number') return val;
@@ -695,10 +635,186 @@ const parseValue = (val) => {
     }
     return null;
 };
+const workloadData = [
+    {
+        product: 'Raw Material',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [73, 61, 212, 61, 424, 118, 91, 204, null, null, null, null], average: 155.5, min: 61, max: 424 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [81, 94, 47, 31, 67, 68, 83, 50, null, null, null, null], average: 65.13, min: 31, max: 94 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [4941, 4302, 5161, 2669, 3727, 3898, 4514, 4176, null, null, null, null], average: 4173.5, min: 2669, max: 5161 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [5461, 5328, 5283, 3978, 4412, 4333, 5247, 4736, null, null, null, null], average: 4847.25, min: 3978, max: 5461 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [10556, 9785, 10703, 6739, 8630, 8417, 9935, 9166, 0, 0, 0, 0], average: 6721, min: 0, max: 10703 },
+            { description: 'Manpower', isSubRow: false, unit: 'Person', values: [14, 14, 14, 14, 14, 14, 14, 14, null, null, null, null], average: 14, min: 14, max: 14 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [2912, 2688, 2800, 2464, 2688, 2688, 2912, 2800, 0, 0, 0, 0], average: 1995.64, min: 0, max: 2912 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [778.3, 743, 818, 615, 695, 710, 699, 736, null, null, null, null], average: 724.29, min: 615, max: 818 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [3690.3, 3431, 3618, 3079, 3383, 3398, 3611, 3536, 0, 0, 0, 0], average: 2522.39, min: 0, max: 3690.3 },
+        ]
+    },
+    {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [0.02, 0.02, 0.06, 0.02, 0.13, 0.03, 0.03, 0.06, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.02, 0.03, 0.01, 0.01, 0.02, 0.02, 0.02, 0.01, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [1.34, 1.25, 1.43, 0.87, 1.1, 1.15, 1.25, 1.18, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [1.48, 1.55, 1.46, 1.29, 1.3, 1.28, 1.45, 1.34, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [2.86, 2.85, 2.96, 2.19, 2.55, 2.48, 2.75, 2.59, null, null, null, null], average: null, min: null, max: null }
+        ]
+    },
+    {
+        product: 'Coil',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [52759.08, 54903.78, 52647.99, 51072.26, 46240.49, 49378.8, 48592.98, 64070.97, null, null, null, null], average: 52458.29, min: 46240.49, max: 64070.97 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [1180.53, 3168.55, 1008.65, 691.96, 695.07, 420.98, 229.19, 351.44, null, null, null, null], average: 968.3, min: 229.19, max: 3168.55 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [45.68, 83.97, 100.75, 33.87, 57.1, 123.29, 90.96, 89.86, null, null, null, null], average: 78.19, min: 33.87, max: 123.29 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [52136.43, 58890.62, 57909.8, 45454.52, 49189.23, 53805.07, 54331.62, 54650.72, null, null, null, null], average: 53296, min: 45454.52, max: 58890.62 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [106121.72, 117046.92, 111667.19, 97252.61, 96181.89, 103728.14, 103244.75, 119162.99, 0, 0, 0, 0], average: 77673.29, min: 0, max: 119162.99 },
+            { description: 'Manpower', isSubRow: false, unit: 'People', values: [21, 20, 20, 20, 20, 20, 20, 19, null, null, null, null], average: 20, min: 19, max: 21 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [4368, 3840, 4000, 3520, 3840, 3840, 4160, 3800, 0, 0, 0, 0], average: 2851.64, min: 0, max: 4368 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [1124.55, 922, 945, 868, 1014, 1122, 1043.55, 940, null, null, null, null], average: 997.39, min: 868, max: 1124.55 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [5492.55, 4762, 4945, 4388, 4854, 4962, 5203.55, 4740, 0, 0, 0, 0], average: 3577.01, min: 0, max: 5492.55 },
+        ]
+    },
+    {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [9.61, 11.53, 10.65, 11.64, 9.53, 9.95, 9.34, 13.52, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.21, 0.67, 0.2, 0.16, 0.14, 0.08, 0.04, 0.07, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [0.01, 0.02, 0.02, 0.01, 0.01, 0.02, 0.02, 0.02, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [9.49, 12.37, 11.71, 10.36, 10.13, 10.84, 10.44, 11.53, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [19.32, 24.58, 22.58, 22.16, 19.81, 20.9, 19.84, 25.14, null, null, null, null], average: null, min: null, max: null }
+        ]
+    },
+    {
+        product: 'Film&Scrap',
+        rows: [
+            { description: 'Weight : GR_Out', isSubRow: true, unit: 'Ton', values: [null, 554, 2987, 401, null, null, null, null, null, null, null, null], average: 492.75, min: 0, max: 2987 },
+            { description: 'Weight : GI_Out', isSubRow: true, unit: 'Ton', values: [5867.25, 5099.27, 5516.73, 3934.92, 4400.15, 4359.65, 4767.1, 6146.9, null, null, null, null], average: 5011.5, min: 3934.92, max: 6146.9 },
+            { description: 'Weight : GR_In', isSubRow: true, unit: 'Ton', values: [31864.21, 34016.91, 30480.65, 29577.71, 31210.2, 33778.1, 35968.9, 33475.86, null, null, null, null], average: 32546.57, min: 29577.71, max: 35968.9 },
+            { description: 'Weight : GI_In', isSubRow: true, unit: 'Ton', values: [27612.99, 28365.85, 26887.14, 25465.35, 27796.17, 31288.83, 33208.52, 27706.66, null, null, null, null], average: 28541.44, min: 25465.35, max: 33208.52 },
+            { description: 'Sum : Weight', isSubRow: false, unit: 'Ton', values: [65344.45, 68036.03, 65871.52, 59378.98, 63406.52, 69426.58, 73944.52, 67329.42, 0, 0, 0, 0], average: 48430.73, min: 0, max: 73944.52 },
+            { description: 'Manpower', isSubRow: false, unit: 'Person', values: [27, 26, 25, 26, 26, 26, 27, 27, null, null, null, null], average: 26.25, min: 25, max: 27 },
+            { description: 'Workday', isSubRow: false, unit: 'Day', values: [26, 24, 25, 22, 24, 24, 26, 25, null, null, null, null], average: 24.5, min: 22, max: 26 },
+            { description: 'Working Hours', isSubRow: false, unit: 'Hours', values: [5616, 4992, 5000, 4576, 4992, 4992, 5616, 5400, 0, 0, 0, 0], average: 3744, min: 0, max: 5616 },
+            { description: 'OT', isSubRow: false, unit: 'Hours', values: [1882, 1485, 1777, 1393, 1738, 1898, 1921.15, 1727, null, null, null, null], average: 1727.64, min: 1393, max: 1921.15 },
+            { description: 'Sum : Hours', isSubRow: false, unit: 'Hours', values: [7498, 6477, 6777, 5969, 6730, 6890, 7537.15, 7127, 0, 0, 0, 0], average: 5000.47, min: 0, max: 7537.15 },
+        ]
+    },
+     {
+        product: 'Ton/Person/Hr.',
+        isSubProduct: true,
+        rows: [
+            { description: 'Receipt_Out', isSubRow: true, unit: '', values: [0, 0.09, 0.44, 0.07, 0, 0, 0, 0, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_Out', isSubRow: true, unit: '', values: [0.78, 0.79, 0.81, 0.66, 0.65, 0.63, 0.63, 0.86, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Receipt_In', isSubRow: true, unit: '', values: [4.25, 5.25, 4.5, 4.96, 4.64, 4.9, 4.77, 4.7, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Issue_In', isSubRow: true, unit: '', values: [3.68, 4.38, 3.97, 4.27, 4.13, 4.54, 4.41, 3.89, null, null, null, null], average: null, min: null, max: null },
+            { description: 'Sum', isSubRow: false, unit: '', values: [8.71, 10.5, 9.72, 9.95, 9.42, 10.08, 9.81, 9.45, null, null, null, null], average: null, min: null, max: null }
+        ]
+    }
+];
 // ===================================================
 // END: constants.tsx
 // ===================================================
 
+
+// ===================================================
+// START: MOCK BACKEND
+// ===================================================
+const DB_STORAGE_KEY = 'kpiDashboardDatabase';
+
+const defaultDatabase = {
+  kpiData: {
+    kpis: kpiData,
+    chartData: mainChartData,
+    tableRows: tableData,
+  },
+  consumablesData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  otData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  leaveData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  accidentData: {
+    tableData: [],
+    kpis: [],
+    chartData: [],
+  },
+  workloadData: {
+    data: workloadData
+  }
+};
+
+const loadDatabase = () => {
+    try {
+        const storedDb = localStorage.getItem(DB_STORAGE_KEY);
+        if (storedDb) {
+            return JSON.parse(storedDb);
+        }
+    } catch (error) {
+        console.error("Failed to parse database from localStorage, using default.", error);
+        localStorage.removeItem(DB_STORAGE_KEY);
+    }
+    return JSON.parse(JSON.stringify(defaultDatabase));
+};
+
+const mockDatabase = loadDatabase();
+
+const persistDatabase = () => {
+    try {
+        localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(mockDatabase));
+    } catch (error) {
+        console.error("Failed to save database to localStorage.", error);
+    }
+};
+
+const mockApi = {
+  getData: () => new Promise(resolve => setTimeout(() => resolve(JSON.parse(JSON.stringify(mockDatabase))), 1500)),
+  updateKpi: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.kpiData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.kpiData)));
+  }, 500)),
+  updateConsumables: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.consumablesData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.consumablesData)));
+  }, 500)),
+  updateOt: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.otData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.otData)));
+  }, 500)),
+  updateLeave: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.leaveData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.leaveData)));
+  }, 500)),
+  updateAccident: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.accidentData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.accidentData)));
+  }, 500)),
+  updateWorkload: (data) => new Promise(resolve => setTimeout(() => {
+    mockDatabase.workloadData = data;
+    persistDatabase();
+    resolve(JSON.parse(JSON.stringify(mockDatabase.workloadData)));
+  }, 500)),
+};
+// ===================================================
+// END: MOCK BACKEND
+// ===================================================
 
 // ===================================================
 // START: components/KPICard.tsx
@@ -827,7 +943,7 @@ const MainChart = ({ data, title, theme }) => {
 const DataTable = ({ data }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
-  const filteredData = (data || []).filter(row => {
+  const filteredData = data.filter(row => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
     return (
       row.kpi.title.toLowerCase().includes(lowerCaseSearchTerm) ||
@@ -920,7 +1036,7 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
         }
     };
     const headers = ['Date', 'Material', 'Description', 'Qty', 'Unit', 'Price', 'Total', 'CostCtr', 'Dept'];
-    const filteredData = (tableData || []).filter(row =>
+    const filteredData = tableData.filter(row =>
         Object.values(row).some(value =>
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
@@ -977,10 +1093,27 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
     }, [tableData]);
     return (
         <div className="container mx-auto">
-            {tableData && tableData.length > 0 ? (
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Consumables Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {(kpis || []).map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
@@ -1145,7 +1278,7 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
         }
     };
     const headers = ['ID', 'Employee ID', 'Name', 'Position', 'Department', 'Grade', 'Status', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Total'];
-    const filteredData = (tableData || []).filter(row => {
+    const filteredData = tableData.filter(row => {
         const searchString = searchTerm.toLowerCase();
         return (
             row.id.toLowerCase().includes(searchString) ||
@@ -1179,10 +1312,27 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
     }, [tableData]);
     return (
         <div className="container mx-auto">
-            {tableData && tableData.length > 0 ? (
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload OT Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {(kpis || []).map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
@@ -1335,7 +1485,7 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
         }
     };
     const headers = ['NO.', 'EMP.', 'NAME-SURENAME', 'POSITION', 'DEPT.', 'Grade', 'STATUS', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC', 'Leave (No Vac)', 'Leave (w/ Vac)', 'Vac Carried', 'Vac Entitled', 'Total Vac', 'Vac Used', 'Vac Accrued', 'Sick', 'Personal', 'Birthday', 'Other', 'Total'];
-    const filteredData = (tableData || []).filter(row => {
+    const filteredData = tableData.filter(row => {
         const searchString = searchTerm.toLowerCase();
         return (
             row.id.toLowerCase().includes(searchString) ||
@@ -1389,10 +1539,27 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
     }, [tableData]);
     return (
         <div className="container mx-auto">
-            {tableData && tableData.length > 0 ? (
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Leave Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {(kpis || []).map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
@@ -1581,17 +1748,34 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
         }
     };
     const headers = ['ลำดับ', 'วันที่เกิดเหตุ', 'เวลา', 'ความรุนแรง', 'ครั้งที่', 'ส่วนงาน', 'รหัสพนักงาน', 'ชื่อ-สกุล', 'ตำแหน่ง', 'รายละเอียด', 'สาเหตุ', 'มาตรการป้องกัน', 'มูลค่าความเสียหาย', 'การเคลม', 'การดำเนินการ', 'บทลงโทษ', 'หมายเหตุ', 'สถานที่'];
-    const filteredData = (tableData || []).filter(row =>
+    const filteredData = tableData.filter(row =>
         Object.values(row).some(value =>
             String(value).toLowerCase().includes(searchTerm.toLowerCase())
         )
     );
     return (
         <div className="container mx-auto">
-            {tableData && tableData.length > 0 ? (
+             <div className="flex justify-end items-center mb-6">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Accident Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
+            {tableData.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
-                        {(kpis || []).map((kpi, index) => (
+                        {kpis.map((kpi, index) => (
                             <KPICard
                                 key={index}
                                 title={kpi.title}
@@ -1758,6 +1942,23 @@ const WorkloadReport = ({ data, theme, onFileUpload }) => {
 
     return (
         <div className="container mx-auto flex flex-col gap-8">
+            <div className="flex justify-end items-center">
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="hidden"
+                    accept=".xlsx, .xls"
+                />
+                <button
+                    onClick={handleUploadClick}
+                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                    aria-label="Upload Workload Excel file"
+                >
+                    <ArrowUpTrayIcon className="h-5 w-5" />
+                    <span>{t('uploadExcel')}</span>
+                </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {summaryKpis.map((kpi, index) => (
                     <KPICard
@@ -1806,7 +2007,7 @@ const WorkloadReport = ({ data, theme, onFileUpload }) => {
                             </tr>
                         </thead>
                         <tbody className='divide-y divide-light-border dark:divide-dark-border'>
-                           {(data || []).map((productSection, sectionIndex) => (
+                           {data.map((productSection, sectionIndex) => (
                                 <React.Fragment key={sectionIndex}>
                                     {!productSection.isSubProduct && (
                                         <tr className="bg-slate-50 dark:bg-dark-bg/50">
@@ -1869,7 +2070,6 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
     { key: 'leaveReport', icon: <CalendarDaysIcon className="h-6 w-6" /> },
     { key: 'accidentReport', icon: <ExclamationTriangleIcon className="h-6 w-6" /> },
     { key: 'workloadReport', icon: <UserGroupIcon className="h-6 w-6" /> },
-    { key: 'externalApp', icon: <ArchiveBoxIcon className="h-6 w-6" /> },
     { key: 'reports', icon: <ChartPieIcon className="h-6 w-6" /> },
     { key: 'documents', icon: <DocumentTextIcon className="h-6 w-6" /> },
     { key: 'settings', icon: <Cog6ToothIcon className="h-6 w-6" /> },
@@ -1915,24 +2115,10 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const LiveIndicator = ({ status }) => {
-    const { t } = useTranslation();
-    const statusInfo = {
-        connected: { textKey: 'live', color: 'text-brand-success', Icon: WifiIcon, pulse: false },
-        connecting: { textKey: 'connecting', color: 'text-brand-warning', Icon: WifiIcon, pulse: true },
-        error: { textKey: 'offline', color: 'text-brand-danger', Icon: WifiSlashIcon, pulse: false }
-    };
-    const { textKey, color, Icon, pulse } = statusInfo[status] || statusInfo.error;
-    return (
-        <div className={`flex items-center gap-2 ${color}`}>
-            <Icon className={`h-6 w-6 ${pulse ? 'animate-pulse' : ''}`} />
-            <span className="font-semibold hidden sm:inline">{t(textKey)}</span>
-        </div>
-    );
-};
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, connectionStatus }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
+  const loadReportInputRef = useRef(null);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -1945,8 +2131,19 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, con
     }
   };
 
-  // กำหนดหน้าที่ต้องการแสดงปุ่ม Upload
-  const showUploadButton = ['kpiReport', 'consumablesReport', 'otReport', 'leaveReport', 'accidentReport', 'workloadReport'].includes(activePage);
+  const handleLoadClick = () => {
+    loadReportInputRef.current?.click();
+  };
+
+  const handleLoadFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        onLoadReport(file);
+    }
+    if (event.target) {
+        event.target.value = null;
+    }
+  };
 
   return (
     <header className="bg-light-card dark:bg-dark-card border-b border-light-border dark:border-dark-border p-4 shadow-sm flex items-center justify-between">
@@ -1965,7 +2162,7 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, con
             className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
           />
         </div>
-        {showUploadButton && (
+        {activePage === 'kpiReport' && (
           <>
             <input
                 type="file"
@@ -1977,14 +2174,36 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, con
             <button 
                 onClick={handleUploadClick}
                 className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                aria-label="Upload Excel file"
+                aria-label="Upload KPI data file"
             >
                 <ArrowUpTrayIcon className="h-5 w-5" />
-                <span className='hidden sm:inline'>{activePage === 'kpiReport' ? t('uploadKpiData') : t('uploadExcel')}</span>
+                <span className='hidden sm:inline'>{t('uploadKpiData')}</span>
             </button>
           </>
         )}
-        <LiveIndicator status={connectionStatus} />
+        <input
+            type="file"
+            ref={loadReportInputRef}
+            onChange={handleLoadFileChange}
+            className="hidden"
+            accept=".json"
+        />
+        <button
+          onClick={handleLoadClick}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
+          aria-label={t('loadReport')}
+          title={t('loadReport')}
+        >
+          <ArrowDownTrayIcon className="h-6 w-6" />
+        </button>
+        <button
+          onClick={onShareReport}
+          className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
+          aria-label={t('shareReport')}
+          title={t('shareReport')}
+        >
+          <ShareIcon className="h-6 w-6" />
+        </button>
         <button
           onClick={toggleTheme}
           className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
@@ -2029,131 +2248,19 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, con
 // START: LoadingSpinner.tsx
 // ===================================================
 const LoadingSpinner = () => {
+    const { t } = useTranslation();
     return (
         <div className="flex flex-col items-center justify-center h-screen w-full bg-light-bg dark:bg-dark-bg">
             <div className="flex items-center">
                 <BoltIcon className="h-16 w-16 text-brand-primary animate-pulse" />
                 <span className="text-3xl font-bold ml-4 text-light-text-secondary dark:text-dark-text-secondary">Loading Dashboard...</span>
             </div>
-            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Preparing your dashboard...</p>
+            <p className="mt-4 text-light-text-secondary dark:text-dark-text-secondary">Please wait while we fetch your data.</p>
         </div>
     );
 };
 // ===================================================
 // END: LoadingSpinner.tsx
-// ===================================================
-
-// ===================================================
-// START: Toast.tsx
-// ===================================================
-const Toast = ({ message, show, onDismiss }) => {
-    const { t } = useTranslation();
-    const [animationClass, setAnimationClass] = useState('');
-
-    useEffect(() => {
-        if (show) {
-            setAnimationClass('animate-slideIn');
-            const timer = setTimeout(() => {
-                // Start slide out animation before removing the component
-                 setAnimationClass('animate-slideOut');
-            }, 4500);
-            const dismissTimer = setTimeout(onDismiss, 5000);
-            return () => {
-                clearTimeout(timer);
-                clearTimeout(dismissTimer);
-            };
-        } else {
-            setAnimationClass('');
-        }
-    }, [show, onDismiss]);
-    
-    if (!show && animationClass === '') return null;
-
-    return (
-        <div className={`fixed bottom-5 right-5 z-50 p-4 rounded-lg shadow-2xl flex items-center gap-4 bg-light-card dark:bg-dark-card border border-brand-success ${animationClass}`}>
-            <CheckCircleIcon className="h-8 w-8 text-brand-success" />
-            <div>
-                <p className="font-bold text-light-text-primary dark:text-dark-text-primary">{t('toastSuccess')}</p>
-                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">{message}</p>
-            </div>
-             <button onClick={() => setAnimationClass('animate-slideOut')} className="absolute top-2 right-2 text-light-text-secondary dark:text-dark-text-secondary">
-                <XMarkIcon className="h-5 w-5"/>
-            </button>
-        </div>
-    );
-};
-
-// ===================================================
-// END: Toast.tsx
-// ===================================================
-
-// ===================================================
-// START: ConnectionErrorDisplay.tsx
-// ===================================================
-const ConnectionErrorDisplay = ({ error }) => {
-    const { t } = useTranslation();
-    const securityRulesExample = `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}`;
-    return (
-        <div className="flex items-center justify-center h-screen w-full bg-red-50 dark:bg-red-900/20 p-4">
-            <div className="max-w-4xl w-full bg-light-card dark:bg-dark-card border border-brand-danger rounded-xl shadow-2xl p-8 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50">
-                    <ExclamationTriangleIcon className="h-8 w-8 text-brand-danger" aria-hidden="true" />
-                </div>
-                <h2 className="mt-4 text-2xl font-bold text-light-text-primary dark:text-dark-text-primary">{t('dbConnectionFailed')}</h2>
-                <p className="mt-2 text-md text-light-text-secondary dark:text-dark-text-secondary">{t('dbConnectionFailedMessage')}</p>
-                
-                <div className="mt-6 text-left bg-light-bg dark:bg-dark-bg/50 p-4 rounded-lg border border-light-border dark:border-dark-border">
-                    <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary">{t('errorDetails')}</h3>
-                    <div className="mt-2 text-sm">
-                        <p><span className="font-medium">{t('errorCode')}:</span> <code className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 px-1 rounded">{error.code}</code></p>
-                        <p><span className="font-medium">{t('errorMessage')}:</span> <span className="text-light-text-secondary dark:text-dark-text-secondary">{error.message}</span></p>
-                    </div>
-                </div>
-
-                <div className="mt-6 text-left bg-amber-50 dark:bg-amber-900/20 p-4 rounded-lg border border-brand-warning">
-                    <h3 className="font-semibold text-light-text-primary dark:text-dark-text-primary">{t('possibleSolution')}</h3>
-                    <p className="mt-2 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                        {error.suggestion}
-                    </p>
-                    {error.code === 'permission-denied' && (
-                        <pre className="mt-4 p-3 bg-slate-800 text-slate-200 rounded-md text-xs overflow-x-auto">
-                            <code>{securityRulesExample}</code>
-                        </pre>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-// ===================================================
-// END: ConnectionErrorDisplay.tsx
-// ===================================================
-
-
-// ===================================================
-// START: ExternalAppPage.tsx
-// ===================================================
-const EXTERNAL_APP_URL = "https://tle125.github.io/WAREHOUSE1-REPORT001/";
-
-const ExternalAppPage = ({ url }) => (
-    <div className="w-full h-full bg-light-card dark:bg-dark-card rounded-xl shadow-lg overflow-hidden">
-        <iframe
-            src={url}
-            title="External Application"
-            className="w-full h-full border-0"
-            sandbox="allow-forms allow-modals allow-pointer-lock allow-popups allow-presentation allow-same-origin allow-scripts"
-        />
-    </div>
-);
-// ===================================================
-// END: ExternalAppPage.tsx
 // ===================================================
 
 
@@ -2173,7 +2280,7 @@ const PlaceholderPage = ({ title }) => {
 };
 
 const App = () => {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   
   // Shared Data State
   const [kpis, setKpis] = useState([]);
@@ -2195,17 +2302,10 @@ const App = () => {
   
   // UI State
   const [isLoading, setIsLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState('connecting'); // 'connecting', 'connected', 'error'
-  const [connectionError, setConnectionError] = useState(null);
   const [activePage, setActivePage] = useState(getInitialState('activePage', 'kpiReport'));
   const [theme, setTheme] = useState(getInitialState('theme', 'dark'));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
 
-  const showToast = (message) => {
-    setToastMessage(message);
-  };
-  
   const toggleTheme = () => {
       setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
   };
@@ -2223,377 +2323,652 @@ const App = () => {
   }, [activePage]);
 
   useEffect(() => {
-    if (!db) {
-        setConnectionStatus('error');
-        setConnectionError({
-            code: 'firebase-init-failed',
-            message: 'Firebase could not be initialized.',
-            suggestion: t('suggestionDefault')
-        });
+    const fetchData = async () => {
+      try {
+        const data = await mockApi.getData();
+        setKpis(data.kpiData.kpis);
+        setChartData(data.kpiData.chartData);
+        setTableRows(data.kpiData.tableRows);
+        setConsumablesTableData(data.consumablesData.tableData);
+        setConsumablesKpis(data.consumablesData.kpis);
+        setConsumablesChartData(data.consumablesData.chartData);
+        setOtTableData(data.otData.tableData);
+        setOtKpis(data.otData.kpis);
+        setOtChartData(data.otData.chartData);
+        setLeaveTableData(data.leaveData.tableData);
+        setLeaveKpis(data.leaveData.kpis);
+        setLeaveChartData(data.leaveData.chartData);
+        setAccidentTableData(data.accidentData.tableData);
+        setAccidentKpis(data.accidentData.kpis);
+        setAccidentChartData(data.accidentData.chartData);
+        setWorkloadReportData(data.workloadData.data);
+      } catch (error) {
+        console.error("Failed to fetch initial data:", error);
+        alert("Could not load dashboard data. Please refresh the page.");
+      } finally {
         setIsLoading(false);
-        return;
-    }
-
-    const reportConfigs = [
-        {
-            collection: COLLECTIONS.KPI,
-            setters: (data) => {
-                setKpis(data?.kpis || []);
-                setChartData(data?.chartData || []);
-                setTableRows(data?.tableRows || []);
-            },
-            default: defaultData.kpi
-        },
-        {
-            collection: COLLECTIONS.CONSUMABLES,
-            setters: (data) => {
-                setConsumablesTableData(data?.tableData || []);
-                setConsumablesKpis(data?.kpis || []);
-                setConsumablesChartData(data?.chartData || []);
-            },
-            default: defaultData.consumables
-        },
-        {
-            collection: COLLECTIONS.OT,
-            setters: (data) => {
-                setOtTableData(data?.tableData || []);
-                setOtKpis(data?.kpis || []);
-                setOtChartData(data?.chartData || []);
-            },
-            default: defaultData.ot
-        },
-        {
-            collection: COLLECTIONS.LEAVE,
-            setters: (data) => {
-                setLeaveTableData(data?.tableData || []);
-                setLeaveKpis(data?.kpis || []);
-                setLeaveChartData(data?.chartData || []);
-            },
-            default: defaultData.leave
-        },
-        {
-            collection: COLLECTIONS.ACCIDENT,
-            setters: (data) => {
-                setAccidentTableData(data?.tableData || []);
-                setAccidentKpis(data?.kpis || []);
-                setAccidentChartData(data?.chartData || []);
-            },
-            default: defaultData.accident
-        },
-        {
-            collection: COLLECTIONS.WORKLOAD,
-            setters: (data) => {
-                setWorkloadReportData(data?.data || []);
-            },
-            default: defaultData.workload
-        }
-    ];
-
-    const unsubscribes = reportConfigs.map(({ collection, setters, default: defaultState }) => {
-        const docRef = firebaseService.getDocRef(collection);
-        return onSnapshot(docRef, (docSnap) => {
-            if (connectionStatus !== 'connected') setConnectionStatus('connected');
-            if (connectionError) setConnectionError(null);
-
-            if (docSnap.exists()) {
-                setters(sanitizeData(docSnap.data()));
-            } else {
-                console.log(`Document for ${collection} does not exist, using default data.`);
-                setters(sanitizeData(defaultState));
-            }
-        }, (error) => {
-            setConnectionStatus('error');
-            console.error(`Firebase Snapshot Error on ${collection}:`, { code: error.code, message: error.message });
-
-            let suggestionKey;
-            switch (error.code) {
-                case 'permission-denied': suggestionKey = 'suggestionPermissionDenied'; break;
-                case 'unavailable':
-                case 'deadline-exceeded': suggestionKey = 'suggestionUnavailable'; break;
-                default: suggestionKey = 'suggestionDefault';
-            }
-            setConnectionError({ code: error.code, message: error.message, suggestion: t(suggestionKey) });
-            setIsLoading(false); // Stop loading on the first error
-        });
-    });
-    
-    setIsLoading(false);
-
-    // Cleanup all subscriptions on unmount
-    return () => unsubscribes.forEach(unsub => unsub());
-  }, [t]); // Depend on `t` for error message translations.
+      }
+    };
+    fetchData();
+  }, []);
 
   const handleNavigate = (page) => {
     setActivePage(page);
     setIsSidebarOpen(false);
   };
   
-  const handleFileUpload = async (file, processor, serviceUpdater) => {
-     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const data = e.target?.result;
-        const workbook = read(data, { type: 'binary' });
-        const payload = processor(workbook);
-        
-        if (payload) {
-          await serviceUpdater(payload);
-          showToast(`Data for ${t(activePage)} updated.`);
+  const handleShareReport = () => {
+    try {
+        const dbData = localStorage.getItem(DB_STORAGE_KEY);
+        if (!dbData) {
+            alert("No data available to share.");
+            return;
         }
-      } catch (error) {
-        console.error(`Error processing Excel file for ${activePage}:`, error);
-        alert("Failed to process the Excel file. Please ensure it's in the correct format.");
-      }
+        const blob = new Blob([dbData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const timestamp = new Date().toISOString().replace(/:/g, '-');
+        a.href = url;
+        a.download = `kpi-dashboard-export-${timestamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error("Error sharing report:", error);
+        alert("Could not share the report. An error occurred.");
+    }
+  };
+
+  const handleLoadReport = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target.result;
+            const data = JSON.parse(text);
+
+            // Basic validation
+            if (typeof data !== 'object' || data === null || !data.kpiData || !data.consumablesData) {
+                throw new Error("Invalid or corrupted file format.");
+            }
+
+            localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(data));
+            alert("Report loaded successfully! The page will now reload.");
+            window.location.reload();
+        } catch (error) {
+            console.error("Error loading report:", error);
+            alert(`Failed to load the report file. Error: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleDashboardFileUpload = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = e.target?.result;
+            const workbook = read(data, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                return;
+            }
+            const newKpis = [];
+            const newTableRows = [];
+            const monthCols = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            rows.forEach((row, index) => {
+                if (!row || row.length < 18 || !row[1]) return;
+                const score = row[16] ? String(row[16]) : 'N/A';
+                const result = row[17] ? String(row[17]) : 'N/A';
+                newKpis.push({
+                    title: String(row[1] || 'Untitled KPI'),
+                    value: score,
+                    trend: result,
+                    trendDirection: result.toUpperCase() === 'PASS' ? 'up' : 'down',
+                    icon: kpiData[index % kpiData.length].icon,
+                    color: kpiData[index % kpiData.length].color,
+                });
+                newTableRows.push({
+                    kpi: {
+                        title: String(row[1] || 'Untitled KPI'),
+                        measurement: String(row[3] || ''),
+                    },
+                    target: String(row[2] || 'N/A'),
+                    score: score,
+                    result: result,
+                });
+            });
+            const firstKpiRow = rows[0];
+            const newChartData = monthCols.map((month, index) => {
+                const rawValue = firstKpiRow[4 + index];
+                let numericValue = 0;
+                if (typeof rawValue === 'string') {
+                    numericValue = parseFloat(rawValue.replace('%', ''));
+                } else if (typeof rawValue === 'number') {
+                    numericValue = rawValue;
+                }
+                return {
+                    name: month,
+                    value: isNaN(numericValue) ? 0 : numericValue,
+                };
+            });
+            const payload = { kpis: newKpis.slice(0, 4), chartData: newChartData, tableRows: newTableRows };
+            
+            // Save to Firestore
+            saveToFirestore('kpi_reports', {
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString(),
+                data: payload
+            });
+            
+            mockApi.updateKpi(payload).then(updated => {
+                setKpis(updated.kpis);
+                setChartData(updated.chartData);
+                setTableRows(updated.tableRows);
+                setActivePage('kpiReport');
+                alert('✅ KPI data uploaded and saved to Firestore successfully!');
+            });
+        } catch (error) {
+            console.error("Error processing Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleConsumablesFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setConsumablesTableData([]);
+                setConsumablesKpis([]);
+                setConsumablesChartData([]);
+                return;
+            }
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 9) return null;
+                let date = row[0];
+                if (typeof date === 'number') {
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const jsDate = new Date(excelEpoch.getTime() + date * 86400000);
+                    date = jsDate.toLocaleDateString('en-GB');
+                } else if (date instanceof Date) {
+                    date = date.toLocaleDateString('en-GB');
+                }
+                return {
+                    date: String(date || ''),
+                    material: String(row[1] || ''),
+                    description: String(row[2] || ''),
+                    quantity: String(row[3] || '0'),
+                    unit: String(row[4] || ''),
+                    price: String(row[5] || '0'),
+                    totalPrice: String(row[6] || '0'),
+                    costCenter: String(row[7] || ''),
+                    department: String(row[8] || ''),
+                };
+            }).filter((item) => item !== null && item.date !== '');
+            const totalCost = newReportData.reduce((acc, row) => {
+                const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g,""));
+                return acc + (isNaN(price) ? 0 : price);
+            }, 0);
+            const uniqueItems = new Set(newReportData.map(row => row.material)).size;
+            const uniqueDepartments = new Set(newReportData.map(row => row.department)).size;
+            const totalTransactions = newReportData.length;
+            const newKpis = [
+                { title: 'Total Cost', value: `฿${totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-success' },
+                { title: 'Total Items', value: uniqueItems.toLocaleString(), icon: 'ArchiveBoxIcon', color: 'text-brand-primary' },
+                { title: 'Departments', value: uniqueDepartments.toLocaleString(), icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Transactions', value: totalTransactions.toLocaleString(), icon: 'DocumentTextIcon', color: 'text-brand-secondary' }
+            ];
+            const monthlyTotals = {};
+            newReportData.forEach(row => {
+                const dateParts = row.date.split('/');
+                if (dateParts.length === 3) {
+                    const month = parseInt(dateParts[1], 10) - 1;
+                    const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, ""));
+                    if (!isNaN(month) && month >= 0 && month < 12 && !isNaN(price)) {
+                        monthlyTotals[month] = (monthlyTotals[month] || 0) + price;
+                    }
+                }
+            });
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: monthlyTotals[index] || 0,
+            }));
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            
+            // Save to Firestore
+            saveToFirestore('consumables_reports', {
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString(),
+                data: payload
+            });
+            
+            mockApi.updateConsumables(payload).then(updated => {
+                setConsumablesChartData(updated.chartData);
+                setConsumablesKpis(updated.kpis);
+                setConsumablesTableData(updated.tableData);
+                alert('✅ Consumables data uploaded and saved to Firestore successfully!');
+            });
+        } catch (error) {
+            console.error("Error processing consumables Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleOTFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setOtTableData([]);
+                setOtKpis([]);
+                setOtChartData([]);
+                return;
+            }
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 20) return null;
+                const monthlyOT = [];
+                for (let i = 7; i <= 18; i++) {
+                    const val = parseFloat(row[i]);
+                    monthlyOT.push(isNaN(val) ? 0 : val);
+                }
+                const totalOT = parseFloat(row[19]);
+                return {
+                    id: String(row[0] || ''),
+                    employeeId: String(row[1] || ''),
+                    name: String(row[2] || ''),
+                    position: String(row[3] || ''),
+                    department: String(row[4] || ''),
+                    grade: String(row[5] || ''),
+                    status: String(row[6] || ''),
+                    monthlyOT: monthlyOT,
+                    totalOT: isNaN(totalOT) ? 0 : totalOT,
+                };
+            }).filter((item) => item !== null && item.employeeId !== '');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyTotals = Array(12).fill(0);
+            const departmentTotals = {};
+            let totalOTAll = 0;
+            newReportData.forEach(row => {
+                row.monthlyOT.forEach((ot, index) => {
+                    monthlyTotals[index] += ot;
+                });
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalOT;
+                totalOTAll += row.totalOT;
+            });
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: parseFloat(monthlyTotals[index].toFixed(2)),
+            }));
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+            const newKpis = [
+                { title: 'Total OT Hours', value: totalOTAll.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), icon: 'ClockIcon', color: 'text-brand-primary' },
+                { title: 'Total Employees', value: newReportData.length.toLocaleString(), icon: 'UsersIcon', color: 'text-brand-secondary' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
+            ];
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            
+            // Save to Firestore
+            saveToFirestore('ot_reports', {
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString(),
+                data: payload
+            });
+            
+            mockApi.updateOt(payload).then(updated => {
+                setOtChartData(updated.chartData);
+                setOtKpis(updated.kpis);
+                setOtTableData(updated.tableData);
+                alert('✅ OT data uploaded and saved to Firestore successfully!');
+            });
+        } catch (error) {
+            console.error("Error processing OT Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleLeaveFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1 });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setLeaveTableData([]);
+                setLeaveKpis([]);
+                setLeaveChartData([]);
+                return;
+            }
+            const newReportData = rows.map((row, index) => {
+                if (!row || row.length < 29) return null;
+                const getNum = (val) => {
+                    if (typeof val === 'number') {
+                        return isNaN(val) ? 0 : val;
+                    }
+                    if (typeof val === 'string') {
+                        const cleanedVal = val.replace(/[^0-9.-]+/g, "");
+                        if (cleanedVal === '') return 0;
+                        const num = parseFloat(cleanedVal);
+                        return isNaN(num) ? 0 : num;
+                    }
+                    return 0;
+                };
+                const monthlyLeave = [];
+                for (let i = 5; i <= 16; i++) {
+                    monthlyLeave.push(getNum(row[i]));
+                }
+                const name = String(row[0] || '');
+                return {
+                    id: String(index + 1),
+                    employeeId: `${name.replace(/\s/g, '-')}-${index}`,
+                    name: name,
+                    position: String(row[1] || ''),
+                    department: String(row[2] || ''),
+                    grade: String(row[3] || ''),
+                    status: String(row[4] || ''),
+                    monthlyLeave: monthlyLeave,
+                    leaveWithoutVacation: getNum(row[17]),
+                    totalLeaveWithVacation: getNum(row[18]),
+                    vacationCarriedOver: getNum(row[19]),
+                    vacationEntitlement: getNum(row[20]),
+                    totalVacation: getNum(row[21]),
+                    vacationUsed: getNum(row[22]),
+                    vacationAccrued: getNum(row[23]),
+                    sickLeave: getNum(row[24]),
+                    personalLeave: getNum(row[25]),
+                    birthdayLeave: getNum(row[26]),
+                    otherLeave: getNum(row[27]),
+                    totalLeave: getNum(row[28]),
+                };
+            }).filter((item) => item !== null && item.name !== '');
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyTotals = Array(12).fill(0);
+            const departmentTotals = {};
+            const leaveTypeTotals = { 'Sick': 0, 'Personal': 0, 'Birthday': 0, 'Other': 0 };
+            let totalLeaveAll = 0;
+            newReportData.forEach(row => {
+                row.monthlyLeave.forEach((leave, index) => {
+                    monthlyTotals[index] += leave;
+                });
+                departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalLeave;
+                leaveTypeTotals['Sick'] += row.sickLeave;
+                leaveTypeTotals['Personal'] += row.personalLeave;
+                leaveTypeTotals['Birthday'] += row.birthdayLeave;
+                leaveTypeTotals['Other'] += row.otherLeave;
+                totalLeaveAll += row.totalLeave;
+            });
+            const newChartData = monthNames.map((name, index) => ({
+                name,
+                value: parseFloat(monthlyTotals[index].toFixed(2)),
+            }));
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topLeaveType = Object.entries(leaveTypeTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+            const newKpis = [
+                { title: 'Total Leave Days', value: totalLeaveAll.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), icon: 'UsersIcon', color: 'text-brand-primary' },
+                { title: 'Top Leave Type', value: topLeaveType[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
+                { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
+            ];
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            
+            // Save to Firestore
+            saveToFirestore('leave_reports', {
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString(),
+                data: payload
+            });
+            
+            mockApi.updateLeave(payload).then(updated => {
+                setLeaveChartData(updated.chartData);
+                setLeaveKpis(updated.kpis);
+                setLeaveTableData(updated.tableData);
+                alert('✅ Leave data uploaded and saved to Firestore successfully!');
+            });
+        } catch (error) {
+            console.error("Error processing Leave Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleAccidentFileUpload = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const workbookData = e.target?.result;
+            const workbook = read(workbookData, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+            const rows = json.slice(1);
+            if (rows.length === 0) {
+                alert("Excel sheet is empty or invalid.");
+                setAccidentTableData([]);
+                return;
+            }
+            const getNum = (val) => {
+                if (typeof val === 'number') return isNaN(val) ? 0 : val;
+                if (typeof val === 'string') {
+                    const cleanedVal = val.replace(/[^0-9.-]+/g, "");
+                    if (cleanedVal === '') return 0;
+                    const num = parseFloat(cleanedVal);
+                    return isNaN(num) ? 0 : num;
+                }
+                return 0;
+            };
+            const newReportData = rows.map(row => {
+                if (!row || row.length < 18) return null;
+                let incidentDate = row[1];
+                if (typeof incidentDate === 'number' && incidentDate > 0) {
+                    const excelEpoch = new Date(1899, 11, 30);
+                    const jsDate = new Date(excelEpoch.getTime() + incidentDate * 86400000);
+                    incidentDate = jsDate.toLocaleDateString('en-GB');
+                } else if (incidentDate instanceof Date) {
+                    incidentDate = incidentDate.toLocaleDateString('en-GB');
+                }
+                return {
+                    id: String(row[0] || ''),
+                    incidentDate: String(incidentDate || ''),
+                    incidentTime: String(row[2] || ''),
+                    severity: String(row[3] || ''),
+                    occurrence: String(row[4] || ''),
+                    department: String(row[5] || ''),
+                    employeeId: String(row[6] || ''),
+                    employeeName: String(row[7] || ''),
+                    position: String(row[8] || ''),
+                    details: String(row[9] || ''),
+                    cause: String(row[10] || ''),
+                    prevention: String(row[11] || ''),
+                    damageValue: getNum(row[12]),
+                    insuranceClaim: String(row[13] || ''),
+                    actionTaken: String(row[14] || ''),
+                    penalty: String(row[15] || ''),
+                    remarks: String(row[16] || ''),
+                    accidentLocation: String(row[17] || ''),
+                };
+            }).filter((item) => item !== null && item.id !== '');
+            const departmentTotals = {};
+            const severityTotals = {};
+            let totalDamage = 0;
+            newReportData.forEach(row => {
+                if (row.department) {
+                    departmentTotals[row.department] = (departmentTotals[row.department] || 0) + 1;
+                }
+                if (row.severity) {
+                    severityTotals[row.severity] = (severityTotals[row.severity] || 0) + 1;
+                }
+                totalDamage += row.damageValue;
+            });
+            const newChartData = Object.entries(departmentTotals)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a, b) => b.value - a.value);
+            const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const topSeverity = Object.entries(severityTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
+            const newKpis = [
+                { title: 'Total Incidents', value: newReportData.length.toLocaleString(), icon: 'ExclamationTriangleIcon', color: 'text-brand-danger' },
+                { title: 'Total Damage Value', value: `฿${totalDamage.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-warning' },
+                { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-primary' },
+                { title: 'Top Severity', value: topSeverity[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' }
+            ];
+            const severityColors = ['text-red-400', 'text-orange-400', 'text-amber-400', 'text-yellow-400', 'text-lime-400'];
+            Object.entries(severityTotals)
+              .sort((a, b) => b[1] - a[1])
+              .forEach(([name, value], index) => {
+                if (name.trim() !== '') {
+                  newKpis.push({
+                      title: `ประเภท: ${name}`,
+                      value: `${value.toLocaleString()} ครั้ง`,
+                      icon: 'ClipboardDocumentCheckIcon', 
+                      color: severityColors[index % severityColors.length]
+                  });
+                }
+            });
+            const payload = { tableData: newReportData, kpis: newKpis, chartData: newChartData };
+            
+            // Save to Firestore
+            saveToFirestore('accident_reports', {
+                fileName: file.name,
+                fileSize: file.size,
+                uploadedAt: new Date().toISOString(),
+                data: payload
+            });
+            
+            mockApi.updateAccident(payload).then(updated => {
+                setAccidentChartData(updated.chartData);
+                setAccidentKpis(updated.kpis);
+                setAccidentTableData(updated.tableData);
+                alert('✅ Accident data uploaded and saved to Firestore successfully!');
+            });
+        } catch (error) {
+            console.error("Error processing Accident Excel file:", error);
+            alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+        }
     };
     reader.readAsBinaryString(file);
   };
   
-  // KPI Dashboard Processor
-  const kpiProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1 });
-    const rows = json.slice(1);
-    if (rows.length === 0) {
-      alert("Excel sheet is empty or invalid.");
-      return null;
-    }
-    const newKpis = [];
-    const newTableRows = [];
-    rows.forEach((row, index) => {
-      if (!row || row.length < 18 || !row[1]) return;
-      const score = row[16] ? String(row[16]) : 'N/A';
-      const result = row[17] ? String(row[17]) : 'N/A';
-      newKpis.push({
-        title: String(row[1] || 'Untitled KPI'),
-        value: score,
-        trend: result,
-        trendDirection: result.toUpperCase() === 'PASS' ? 'up' : 'down',
-        icon: ['CurrencyDollarIcon', 'ShoppingCartIcon', 'UsersIcon', 'ChartBarIcon'][index % 4],
-        color: ['text-brand-success', 'text-brand-primary', 'text-brand-warning', 'text-brand-secondary'][index % 4],
-      });
-      newTableRows.push({
-        kpi: { title: String(row[1] || 'Untitled KPI'), measurement: String(row[3] || '') },
-        target: String(row[2] || 'N/A'), score, result,
-      });
-    });
-    const firstKpiRow = rows.find(r => r && r.length >= 16) || [];
-    const newChartData = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((name, index) => {
-      const rawValue = firstKpiRow[4 + index];
-      const numericValue = typeof rawValue === 'string' ? parseFloat(rawValue.replace('%', '')) : typeof rawValue === 'number' ? rawValue : 0;
-      return { name, value: isNaN(numericValue) ? 0 : numericValue };
-    });
-    return { kpis: newKpis.slice(0, 4), chartData: newChartData, tableRows: newTableRows };
-  };
+  const handleWorkloadFileUpload = (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const workbookData = e.target?.result;
+                const workbook = read(workbookData, { type: 'binary' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = utils.sheet_to_json(worksheet, { header: 1, defval: null });
 
-  // Consumables Processor
-  const consumablesProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1 });
-    const rows = json.slice(1);
-    if (rows.length === 0) { alert("Excel sheet is empty or invalid."); return null; }
-    
-    const newReportData = rows.map(row => {
-      if (!row || row.length < 9) return null;
-      let date = row[0];
-      if (typeof date === 'number') {
-        const jsDate = new Date(1899, 11, 30);
-        jsDate.setDate(jsDate.getDate() + date);
-        date = jsDate.toLocaleDateString('en-GB');
-      } else if (date instanceof Date) { date = date.toLocaleDateString('en-GB'); }
-      return { date: String(date || ''), material: String(row[1] || ''), description: String(row[2] || ''), quantity: String(row[3] || '0'), unit: String(row[4] || ''), price: String(row[5] || '0'), totalPrice: String(row[6] || '0'), costCenter: String(row[7] || ''), department: String(row[8] || '') };
-    }).filter(item => item && item.date);
+                const newWorkloadData = [];
+                let currentProductSection = null;
 
-    const totalCost = newReportData.reduce((acc, row) => acc + (parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, "")) || 0), 0);
-    const newKpis = [
-      { title: 'Total Cost', value: `฿${totalCost.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-success' },
-      { title: 'Total Items', value: new Set(newReportData.map(r => r.material)).size.toLocaleString(), icon: 'ArchiveBoxIcon', color: 'text-brand-primary' },
-      { title: 'Departments', value: new Set(newReportData.map(r => r.department)).size.toLocaleString(), icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
-      { title: 'Transactions', value: newReportData.length.toLocaleString(), icon: 'DocumentTextIcon', color: 'text-brand-secondary' }
-    ];
+                json.slice(1).forEach(row => { 
+                    if (!row || row.every(cell => cell === null)) return;
 
-    const monthlyTotals = Array(12).fill(0);
-    newReportData.forEach(row => {
-      const month = parseInt(row.date.split('/')[1], 10) - 1;
-      const price = parseFloat(String(row.totalPrice).replace(/[^0-9.-]+/g, ""));
-      if (!isNaN(month) && month >= 0 && month < 12 && !isNaN(price)) monthlyTotals[month] += price;
-    });
+                    const productCell = row[0];
+                    const descriptionCell = row[1];
 
-    const newChartData = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((name, index) => ({ name, value: monthlyTotals[index] || 0 }));
-    return { tableData: newReportData, kpis: newKpis, chartData: newChartData };
-  };
+                    if (productCell && typeof productCell === 'string' && productCell.trim() !== '') {
+                        if (currentProductSection) {
+                            newWorkloadData.push(currentProductSection);
+                        }
+                        currentProductSection = {
+                            product: productCell.trim(),
+                            isSubProduct: productCell.trim() === 'Ton/Person/Hr.',
+                            rows: []
+                        };
+                    }
+                    
+                    if (descriptionCell && typeof descriptionCell === 'string' && descriptionCell.trim() !== '' && currentProductSection) {
+                        const description = descriptionCell.trim();
+                        const values = row.slice(3, 15).map(v => parseValue(v));
+                        const average = parseValue(row[16]);
+                        const min = parseValue(row[17]);
+                        const max = parseValue(row[18]);
 
-  // OT Processor
-  const otProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1 });
-    const rows = json.slice(1);
-    if (rows.length === 0) { alert("Excel sheet is empty or invalid."); return null; }
+                        const nonSubRowPrefixes = ['Sum', 'Manpower', 'Workday', 'Working Hours', 'OT'];
+                        const isSubRow = !nonSubRowPrefixes.some(prefix => description.startsWith(prefix));
 
-    const newReportData = rows.map(row => {
-      if (!row || row.length < 20) return null;
-      const monthlyOT = Array.from({ length: 12 }, (_, i) => parseFloat(row[7 + i]) || 0);
-      const totalOT = parseFloat(row[19]) || 0;
-      return { id: String(row[0] || ''), employeeId: String(row[1] || ''), name: String(row[2] || ''), position: String(row[3] || ''), department: String(row[4] || ''), grade: String(row[5] || ''), status: String(row[6] || ''), monthlyOT, totalOT };
-    }).filter(item => item && item.employeeId);
+                        currentProductSection.rows.push({
+                            description,
+                            isSubRow,
+                            unit: row[2] || '',
+                            values,
+                            average,
+                            min,
+                            max
+                        });
+                    }
+                });
 
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyTotals = Array(12).fill(0);
-    const departmentTotals = {};
-    let totalOTAll = 0;
-    newReportData.forEach(row => {
-      row.monthlyOT.forEach((ot, index) => monthlyTotals[index] += ot);
-      departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalOT;
-      totalOTAll += row.totalOT;
-    });
+                if (currentProductSection) {
+                    newWorkloadData.push(currentProductSection);
+                }
 
-    const newChartData = monthNames.map((name, index) => ({ name, value: parseFloat(monthlyTotals[index].toFixed(2)) }));
-    const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-    const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
+                if (newWorkloadData.length > 0) {
+                     const payload = { data: newWorkloadData };
+                     
+                     // Save to Firestore
+                     saveToFirestore('workload_reports', {
+                         fileName: file.name,
+                         fileSize: file.size,
+                         uploadedAt: new Date().toISOString(),
+                         data: payload
+                     });
+                     
+                    mockApi.updateWorkload(payload).then(updated => {
+                        setWorkloadReportData(updated.data);
+                        alert('✅ Workload data uploaded and saved to Firestore successfully!');
+                    });
+                } else {
+                    alert("Could not parse any data from the file. Please check the format.");
+                }
 
-    const newKpis = [
-      { title: 'Total OT Hours', value: totalOTAll.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), icon: 'ClockIcon', color: 'text-brand-primary' },
-      { title: 'Total Employees', value: newReportData.length.toLocaleString(), icon: 'UsersIcon', color: 'text-brand-secondary' },
-      { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
-      { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
-    ];
-    return { tableData: newReportData, kpis: newKpis, chartData: newChartData };
-  };
-  
-  // Leave Processor
-  const leaveProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1 });
-    const rows = json.slice(1);
-    if (rows.length === 0) { alert("Excel sheet is empty."); return null; }
-
-    const getNum = val => (typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]+/g, ""))) || 0;
-    const newReportData = rows.map((row, index) => {
-      if (!row || row.length < 29) return null;
-      const name = String(row[0] || '');
-      return {
-        id: String(index + 1), employeeId: `${name.replace(/\s/g, '-')}-${index}`, name, position: String(row[1] || ''),
-        department: String(row[2] || ''), grade: String(row[3] || ''), status: String(row[4] || ''),
-        monthlyLeave: Array.from({ length: 12 }, (_, i) => getNum(row[5 + i])),
-        leaveWithoutVacation: getNum(row[17]), totalLeaveWithVacation: getNum(row[18]), vacationCarriedOver: getNum(row[19]),
-        vacationEntitlement: getNum(row[20]), totalVacation: getNum(row[21]), vacationUsed: getNum(row[22]),
-        vacationAccrued: getNum(row[23]), sickLeave: getNum(row[24]), personalLeave: getNum(row[25]),
-        birthdayLeave: getNum(row[26]), otherLeave: getNum(row[27]), totalLeave: getNum(row[28]),
-      };
-    }).filter(item => item && item.name);
-
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const monthlyTotals = Array(12).fill(0);
-    const departmentTotals = {};
-    const leaveTypeTotals = { 'Sick': 0, 'Personal': 0, 'Birthday': 0, 'Other': 0 };
-    let totalLeaveAll = 0;
-    newReportData.forEach(row => {
-      row.monthlyLeave.forEach((leave, index) => monthlyTotals[index] += leave);
-      departmentTotals[row.department] = (departmentTotals[row.department] || 0) + row.totalLeave;
-      Object.keys(leaveTypeTotals).forEach(key => leaveTypeTotals[key] += row[`${key.toLowerCase()}Leave`]);
-      totalLeaveAll += row.totalLeave;
-    });
-
-    const newChartData = monthNames.map((name, index) => ({ name, value: parseFloat(monthlyTotals[index].toFixed(2)) }));
-    const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-    const topLeaveType = Object.entries(leaveTypeTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-    const topMonthIndex = monthlyTotals.indexOf(Math.max(...monthlyTotals));
-
-    const newKpis = [
-      { title: 'Total Leave Days', value: totalLeaveAll.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), icon: 'UsersIcon', color: 'text-brand-primary' },
-      { title: 'Top Leave Type', value: topLeaveType[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' },
-      { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-warning' },
-      { title: 'Top Month', value: monthNames[topMonthIndex], icon: 'ChartBarIcon', color: 'text-brand-success' }
-    ];
-    return { tableData: newReportData, kpis: newKpis, chartData: newChartData };
-  };
-
-  // Accident Processor
-  const accidentProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-    const rows = json.slice(1);
-    if (rows.length === 0) { alert("Excel sheet is empty."); return null; }
-    
-    const getNum = val => (typeof val === 'number' ? val : parseFloat(String(val).replace(/[^0-9.-]+/g, ""))) || 0;
-    const newReportData = rows.map(row => {
-      if (!row || row.length < 18) return null;
-      let incidentDate = row[1];
-      if (typeof incidentDate === 'number' && incidentDate > 0) {
-        const jsDate = new Date(1899, 11, 30);
-        jsDate.setDate(jsDate.getDate() + incidentDate);
-        incidentDate = jsDate.toLocaleDateString('en-GB');
-      } else if (incidentDate instanceof Date) { incidentDate = incidentDate.toLocaleDateString('en-GB'); }
-      return {
-        id: String(row[0]), incidentDate: String(incidentDate), incidentTime: String(row[2]), severity: String(row[3]),
-        occurrence: String(row[4]), department: String(row[5]), employeeId: String(row[6]), employeeName: String(row[7]),
-        position: String(row[8]), details: String(row[9]), cause: String(row[10]), prevention: String(row[11]),
-        damageValue: getNum(row[12]), insuranceClaim: String(row[13]), actionTaken: String(row[14]),
-        penalty: String(row[15]), remarks: String(row[16]), accidentLocation: String(row[17]),
-      };
-    }).filter(item => item && item.id);
-    
-    const departmentTotals = newReportData.reduce((acc, row) => ({...acc, [row.department]: (acc[row.department] || 0) + 1}), {});
-    const severityTotals = newReportData.reduce((acc, row) => ({...acc, [row.severity]: (acc[row.severity] || 0) + 1}), {});
-    const totalDamage = newReportData.reduce((acc, row) => acc + row.damageValue, 0);
-
-    const newChartData = Object.entries(departmentTotals).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    const topDepartment = Object.entries(departmentTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-    const topSeverity = Object.entries(severityTotals).sort((a, b) => b[1] - a[1])[0] || ['N/A', 0];
-
-    const newKpis = [
-      { title: 'Total Incidents', value: newReportData.length.toLocaleString(), icon: 'ExclamationTriangleIcon', color: 'text-brand-danger' },
-      { title: 'Total Damage Value', value: `฿${totalDamage.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: 'CurrencyDollarIcon', color: 'text-brand-warning' },
-      { title: 'Top Department', value: topDepartment[0], icon: 'BuildingOfficeIcon', color: 'text-brand-primary' },
-      { title: 'Top Severity', value: topSeverity[0], icon: 'ClipboardDocumentCheckIcon', color: 'text-brand-secondary' }
-    ];
-
-    return { tableData: newReportData, kpis: newKpis, chartData: newChartData };
-  };
-
-  // Workload Processor
-  const workloadProcessor = (workbook) => {
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const json = utils.sheet_to_json(worksheet, { header: 1, defval: null });
-    const newWorkloadData = [];
-    let currentProductSection = null;
-
-    json.slice(1).forEach(row => {
-      if (!row || row.every(cell => cell === null)) return;
-      const productCell = row[0];
-      const descriptionCell = row[1];
-
-      if (productCell && typeof productCell === 'string' && productCell.trim()) {
-        if (currentProductSection) newWorkloadData.push(currentProductSection);
-        currentProductSection = { product: productCell.trim(), isSubProduct: productCell.trim() === 'Ton/Person/Hr.', rows: [] };
-      }
-      
-      if (descriptionCell && typeof descriptionCell === 'string' && descriptionCell.trim() && currentProductSection) {
-        const description = descriptionCell.trim();
-        const values = row.slice(3, 15).map(parseValue);
-        const nonSubRowPrefixes = ['Sum', 'Manpower', 'Workday', 'Working Hours', 'OT'];
-        currentProductSection.rows.push({
-          description, isSubRow: !nonSubRowPrefixes.some(p => description.startsWith(p)),
-          unit: row[2] || '', values, average: parseValue(row[16]), min: parseValue(row[17]), max: parseValue(row[18]),
-        });
-      }
-    });
-    if (currentProductSection) newWorkloadData.push(currentProductSection);
-
-    if (newWorkloadData.length > 0) {
-      return { data: newWorkloadData };
-    } else {
-      alert("Could not parse workload data.");
-      return null;
-    }
-  };
-
+            } catch (error) {
+                console.error("Error processing Workload Excel file:", error);
+                alert("Failed to process the Excel file. Please ensure it's in the correct format.");
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
 
   const renderContent = () => {
     switch (activePage) {
@@ -2601,7 +2976,7 @@ const App = () => {
         return (
           <div className="container mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {(kpis || []).map((kpi, index) => (
+              {kpis.map((kpi, index) => (
                 <KPICard
                   key={index}
                   title={kpi.title}
@@ -2621,35 +2996,38 @@ const App = () => {
         );
       case 'consumablesReport':
         return <ConsumablesReport 
-                  tableData={consumablesTableData} kpis={consumablesKpis} chartData={consumablesChartData}
-                  onFileUpload={(file) => handleFileUpload(file, consumablesProcessor, firebaseService.updateConsumables)}
+                  tableData={consumablesTableData}
+                  kpis={consumablesKpis}
+                  chartData={consumablesChartData}
+                  onFileUpload={handleConsumablesFileUpload}
                   theme={theme}
                 />;
       case 'otReport':
         return <OTReport
-                  tableData={otTableData} kpis={otKpis} chartData={otChartData}
-                  onFileUpload={(file) => handleFileUpload(file, otProcessor, firebaseService.updateOt)}
+                  tableData={otTableData}
+                  kpis={otKpis}
+                  chartData={otChartData}
+                  onFileUpload={handleOTFileUpload}
                   theme={theme}
                 />;
       case 'leaveReport':
         return <LeaveReport
-                  tableData={leaveTableData} kpis={leaveKpis} chartData={leaveChartData}
-                  onFileUpload={(file) => handleFileUpload(file, leaveProcessor, firebaseService.updateLeave)}
+                  tableData={leaveTableData}
+                  kpis={leaveKpis}
+                  chartData={leaveChartData}
+                  onFileUpload={handleLeaveFileUpload}
                   theme={theme}
                 />;
       case 'accidentReport':
         return <AccidentReport
-                  tableData={accidentTableData} kpis={accidentKpis} chartData={accidentChartData}
-                  onFileUpload={(file) => handleFileUpload(file, accidentProcessor, firebaseService.updateAccident)}
+                  tableData={accidentTableData}
+                  kpis={accidentKpis}
+                  chartData={accidentChartData}
+                  onFileUpload={handleAccidentFileUpload}
                   theme={theme}
                 />;
       case 'workloadReport':
-        return <WorkloadReport 
-                data={workloadReportData} 
-                onFileUpload={(file) => handleFileUpload(file, workloadProcessor, firebaseService.updateWorkload)} 
-                theme={theme} />;
-      case 'externalApp':
-        return <ExternalAppPage url={EXTERNAL_APP_URL} />;
+        return <WorkloadReport data={workloadReportData} onFileUpload={handleWorkloadFileUpload} theme={theme} />;
       case 'reports':
         return <PlaceholderPage title={t('reports')} />;
       case 'documents':
@@ -2667,10 +3045,6 @@ const App = () => {
       return <LoadingSpinner />;
   }
 
-  if (connectionError) {
-      return <ConnectionErrorDisplay error={connectionError} />;
-  }
-
   return (
     <div className="flex h-screen bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary">
       {isSidebarOpen && (
@@ -2683,18 +3057,18 @@ const App = () => {
       <Sidebar activePage={activePage} onNavigate={handleNavigate} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-            onFileUpload={(file) => handleFileUpload(file, kpiProcessor, firebaseService.updateKpi)}
+            onFileUpload={handleDashboardFileUpload} 
             activePage={activePage} 
             theme={theme} 
             toggleTheme={toggleTheme} 
             onMenuClick={() => setIsSidebarOpen(true)}
-            connectionStatus={connectionStatus}
+            onShareReport={handleShareReport}
+            onLoadReport={handleLoadReport}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
         </main>
       </div>
-      <Toast message={toastMessage} show={!!toastMessage} onDismiss={() => setToastMessage('')} />
     </div>
   );
 };
