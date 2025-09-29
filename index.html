@@ -2677,7 +2677,7 @@ const App = () => {
                 return;
             }
             const newReportData = rows.map((row, index) => {
-                if (!row || row.length < 29) return null;
+                if (!row || row.length < 30) return null;
                 const getNum = (val) => {
                     if (typeof val === 'number') {
                         return isNaN(val) ? 0 : val;
@@ -2691,31 +2691,33 @@ const App = () => {
                     return 0;
                 };
                 const monthlyLeave = [];
-                for (let i = 5; i <= 16; i++) {
+                // คอลัมน์ 7-18 สำหรับข้อมูลการลารายเดือน (JAN-DEC)
+                for (let i = 7; i <= 18; i++) {
                     monthlyLeave.push(getNum(row[i]));
                 }
-                const name = String(row[0] || '');
+                const employeeId = String(row[1] || ''); // EMP.
+                const name = String(row[2] || ''); // NAME-SURENAME
                 return {
-                    id: String(index + 1),
-                    employeeId: `${name.replace(/\s/g, '-')}-${index}`,
+                    id: String(row[0] || index + 1), // NO.
+                    employeeId: employeeId,
                     name: name,
-                    position: String(row[1] || ''),
-                    department: String(row[2] || ''),
-                    grade: String(row[3] || ''),
-                    status: String(row[4] || ''),
+                    position: String(row[3] || ''), // POSITION
+                    department: String(row[4] || ''), // DEPT.
+                    grade: String(row[5] || ''), // Grade
+                    status: String(row[6] || ''), // STATUS
                     monthlyLeave: monthlyLeave,
-                    leaveWithoutVacation: getNum(row[17]),
-                    totalLeaveWithVacation: getNum(row[18]),
-                    vacationCarriedOver: getNum(row[19]),
-                    vacationEntitlement: getNum(row[20]),
-                    totalVacation: getNum(row[21]),
-                    vacationUsed: getNum(row[22]),
-                    vacationAccrued: getNum(row[23]),
-                    sickLeave: getNum(row[24]),
-                    personalLeave: getNum(row[25]),
-                    birthdayLeave: getNum(row[26]),
-                    otherLeave: getNum(row[27]),
-                    totalLeave: getNum(row[28]),
+                    leaveWithoutVacation: getNum(row[19]), // ยอดลาไม่รวมพักร้อน
+                    totalLeaveWithVacation: getNum(row[20]), // ลาทั้งหมดรวมพักร้อน
+                    vacationCarriedOver: getNum(row[21]), // พักร้อนยกมา 2567
+                    vacationEntitlement: getNum(row[22]), // สิทธิ์ลาพักร้อน 2568
+                    totalVacation: getNum(row[23]), // รวมพักร้อน 2568
+                    vacationUsed: getNum(row[24]), // จำนวนวันที่ใช้สิทธิ์ลาพักร้อน
+                    vacationAccrued: getNum(row[25]), // พักร้อนสมทบ2568
+                    sickLeave: getNum(row[26]), // ลาป่วย
+                    personalLeave: getNum(row[27]), // ลากิจ
+                    birthdayLeave: getNum(row[28]), // ลาวันเกิด
+                    otherLeave: getNum(row[29]), // ลาอื่นๆ
+                    totalLeave: getNum(row[30]), // รวมทั้งหมด
                 };
             }).filter((item) => item !== null && item.name !== '');
             const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
