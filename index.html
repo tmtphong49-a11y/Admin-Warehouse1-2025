@@ -174,6 +174,70 @@ const getFromFirestore = async (collectionName) => {
   }
 };
 
+// ฟังก์ชันลบข้อมูลทั้งหมดใน collection
+const clearFirestoreCollection = async (collectionName) => {
+  try {
+    if (!firebaseConnected) {
+      console.warn('Firebase not connected. Cannot clear collection.');
+      return false;
+    }
+
+    console.log(`🗑️ Clearing all documents from ${collectionName}...`);
+    const querySnapshot = await getDocs(collection(db, collectionName));
+    
+    if (querySnapshot.empty) {
+      console.log(`✅ Collection ${collectionName} is already empty`);
+      return true;
+    }
+
+    // ลบเอกสารทั้งหมดใน collection
+    const deletePromises = [];
+    querySnapshot.forEach((document) => {
+      deletePromises.push(deleteDoc(doc(db, collectionName, document.id)));
+    });
+
+    await Promise.all(deletePromises);
+    console.log(`✅ Cleared ${querySnapshot.size} documents from ${collectionName}`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error clearing collection ${collectionName}:`, error);
+    return false;
+  }
+};
+
+// ฟังก์ชันลบข้อมูลทั้งหมดจากทุก collection
+const clearAllFirestoreData = async () => {
+  try {
+    console.log('🗑️ Clearing all data from Firestore...');
+    const collections = [
+      'kpi_reports',
+      'consumables_reports', 
+      'ot_reports',
+      'leave_reports',
+      'accident_reports',
+      'workload_reports'
+    ];
+
+    const clearPromises = collections.map(collectionName => 
+      clearFirestoreCollection(collectionName)
+    );
+
+    const results = await Promise.all(clearPromises);
+    const allSuccess = results.every(result => result === true);
+    
+    if (allSuccess) {
+      console.log('🎉 Successfully cleared all data from Firestore');
+      return true;
+    } else {
+      console.warn('⚠️ Some collections could not be cleared');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error clearing all Firestore data:', error);
+    return false;
+  }
+};
+
 // ฟังก์ชันโหลดข้อมูลล่าสุดจาก Firestore
 const loadLatestDataFromFirestore = async (stateSetters) => {
   try {
@@ -633,6 +697,11 @@ const ArrowDownTrayIcon = (props) => (
 const ArrowPathIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+);
+const TrashIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
 );
 // ===================================================
@@ -2212,7 +2281,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore, onClearData }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
   const loadReportInputRef = useRef(null);
@@ -2301,6 +2370,15 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
         >
           <ArrowPathIcon className="h-5 w-5" />
           <span className='hidden sm:inline'>โหลดข้อมูล</span>
+        </button>
+        <button
+          onClick={onClearData}
+          className="flex items-center gap-2 bg-red-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-red-700 transition-colors duration-300"
+          aria-label="ลบข้อมูลทั้งหมดจาก Firestore"
+          title="ลบข้อมูลทั้งหมดจาก Firestore"
+        >
+          <TrashIcon className="h-5 w-5" />
+          <span className='hidden sm:inline'>ลบข้อมูล</span>
         </button>
         <button
           onClick={onShareReport}
@@ -2414,6 +2492,48 @@ const App = () => {
 
   const toggleTheme = () => {
       setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+  };
+
+  // ฟังก์ชันสำหรับปุ่ม "ลบข้อมูลทั้งหมด" ใน Header
+  const handleClearAllData = async () => {
+    try {
+      // ขอยืนยันจากผู้ใช้ก่อนลบ
+      const confirmed = window.confirm(
+        '⚠️ คุณต้องการลบข้อมูลทั้งหมดใน Firestore หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้!'
+      );
+      
+      if (!confirmed) {
+        return;
+      }
+
+      const cleared = await clearAllFirestoreData();
+      if (cleared) {
+        // ล้างข้อมูลใน state ด้วย
+        setKpis([]);
+        setChartData([]);
+        setTableRows([]);
+        setConsumablesTableData([]);
+        setConsumablesKpis([]);
+        setConsumablesChartData([]);
+        setOtTableData([]);
+        setOtKpis([]);
+        setOtChartData([]);
+        setLeaveTableData([]);
+        setLeaveKpis([]);
+        setLeaveChartData([]);
+        setAccidentTableData([]);
+        setAccidentKpis([]);
+        setAccidentChartData([]);
+        setWorkloadReportData([]);
+        
+        alert('✅ ลบข้อมูลทั้งหมดจาก Firestore เรียบร้อยแล้ว');
+      } else {
+        alert('⚠️ เกิดข้อผิดพลาดในการลบข้อมูล');
+      }
+    } catch (error) {
+      console.error('Error clearing Firestore data:', error);
+      alert('❌ เกิดข้อผิดพลาดในการลบข้อมูล: ' + error.message);
+    }
   };
 
   useEffect(() => {
@@ -3237,6 +3357,7 @@ const App = () => {
             onShareReport={handleShareReport}
             onLoadReport={handleLoadReport}
             onLoadFromFirestore={handleLoadFromFirestore}
+            onClearData={handleClearAllData}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
