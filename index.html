@@ -1263,6 +1263,8 @@ const DataTable = ({ data }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKpi, setSelectedKpi] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedKpi, setEditedKpi] = useState(null);
   
   const filteredData = data.filter(row => {
     const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -1391,6 +1393,39 @@ const DataTable = ({ data }) => {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedKpi(null);
+    setIsEditMode(false);
+    setEditedKpi(null);
+  };
+
+  const startEdit = () => {
+    setIsEditMode(true);
+    setEditedKpi({ ...selectedKpi });
+  };
+
+  const cancelEdit = () => {
+    setIsEditMode(false);
+    setEditedKpi(null);
+  };
+
+  const saveEdit = () => {
+    // อัปเดตข้อมูลในตาราง
+    const updatedData = data.map(row => 
+      row.kpi.title === selectedKpi.kpi.title ? editedKpi : row
+    );
+    // ที่นี่คุณสามารถเพิ่มการบันทึกข้อมูลไปยัง backend หรือ localStorage
+    setSelectedKpi(editedKpi);
+    setIsEditMode(false);
+    alert('บันทึกข้อมูลเรียบร้อยแล้ว');
+  };
+
+  const handleMonthlyDataChange = (month, value) => {
+    setEditedKpi(prev => ({
+      ...prev,
+      monthlyData: {
+        ...prev.monthlyData,
+        [month]: value
+      }
+    }));
   };
   return (
     <div className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-lg flex flex-col">
@@ -1460,26 +1495,75 @@ const DataTable = ({ data }) => {
       {isModalOpen && selectedKpi && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={closeModal}>
           <div 
-            className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-light-card dark:bg-dark-card border border-light-border dark:border-dark-border rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="p-6 border-b border-light-border dark:border-dark-border flex justify-between items-start">
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-light-text-primary dark:text-dark-text-primary mb-2">
-                  {selectedKpi.kpi.title}
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedKpi?.kpi?.title || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        kpi: { ...prev.kpi, title: e.target.value }
+                      }))}
+                      className="w-full p-2 border border-light-border dark:border-dark-border rounded-lg bg-light-bg dark:bg-dark-bg text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    selectedKpi.kpi.title
+                  )}
                 </h2>
                 <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                  {selectedKpi.kpi.measurement}
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedKpi?.kpi?.measurement || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        kpi: { ...prev.kpi, measurement: e.target.value }
+                      }))}
+                      className="w-full p-2 border border-light-border dark:border-dark-border rounded-lg bg-light-bg dark:bg-dark-bg text-light-text-secondary dark:text-dark-text-secondary"
+                    />
+                  ) : (
+                    selectedKpi.kpi.measurement
+                  )}
                 </p>
               </div>
-              <button
-                onClick={closeModal}
-                className="ml-4 p-2 hover:bg-light-bg dark:hover:bg-dark-bg rounded-lg transition-colors"
-                aria-label="ปิด"
-              >
-                <XMarkIcon className="h-6 w-6 text-light-text-secondary dark:text-dark-text-secondary" />
-              </button>
+              <div className="flex gap-2 ml-4">
+                {!isEditMode ? (
+                  <button
+                    onClick={startEdit}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg transition-colors"
+                  >
+                    แก้ไข
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={saveEdit}
+                      className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      บันทึก
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      ยกเลิก
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={closeModal}
+                  className="p-2 hover:bg-light-bg dark:hover:bg-dark-bg rounded-lg transition-colors"
+                  aria-label="ปิด"
+                >
+                  <XMarkIcon className="h-6 w-6 text-light-text-secondary dark:text-dark-text-secondary" />
+                </button>
+              </div>
             </div>
             
             {/* Content */}
@@ -1488,23 +1572,76 @@ const DataTable = ({ data }) => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-light-bg dark:bg-dark-bg rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase mb-2">เป้าหมาย</h3>
-                  <p className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{selectedKpi.target}</p>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedKpi?.target || ''}
+                      onChange={(e) => setEditedKpi(prev => ({ ...prev, target: e.target.value }))}
+                      className="w-full p-2 text-xl font-bold border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <p className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">{selectedKpi.target}</p>
+                  )}
                 </div>
                 <div className="bg-light-bg dark:bg-dark-bg rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase mb-2">คะแนน</h3>
-                  <p className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
-                    {formatScoreForKpiDetails(selectedKpi.score, selectedKpi.kpi.title)}
-                  </p>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedKpi?.score || ''}
+                      onChange={(e) => setEditedKpi(prev => ({ ...prev, score: e.target.value }))}
+                      className="w-full p-2 text-xl font-bold border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <p className="text-xl font-bold text-light-text-primary dark:text-dark-text-primary">
+                      {formatScoreForKpiDetails(selectedKpi.score, selectedKpi.kpi.title)}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-light-bg dark:bg-dark-bg rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase mb-2">ผลลัพธ์</h3>
-                  <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
-                    selectedKpi.result.toUpperCase() === 'PASS' 
-                    ? 'bg-green-500/20 text-green-400' 
-                    : 'bg-amber-500/20 text-amber-400'
-                  }`}>
-                    {selectedKpi.result.toUpperCase() === 'PASS' ? t('pass') : t('inProgress')}
-                  </span>
+                  {isEditMode ? (
+                    <select
+                      value={editedKpi?.result || ''}
+                      onChange={(e) => setEditedKpi(prev => ({ ...prev, result: e.target.value }))}
+                      className="w-full p-2 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    >
+                      <option value="PASS">PASS</option>
+                      <option value="IN PROGRESS">IN PROGRESS</option>
+                    </select>
+                  ) : (
+                    <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
+                      selectedKpi.result.toUpperCase() === 'PASS' 
+                      ? 'bg-green-500/20 text-green-400' 
+                      : 'bg-amber-500/20 text-amber-400'
+                    }`}>
+                      {selectedKpi.result.toUpperCase() === 'PASS' ? t('pass') : t('inProgress')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* ข้อมูลรายเดือน */}
+              <div className="mb-8">
+                <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-4">ข้อมูลรายเดือน</h3>
+                <div className="grid grid-cols-6 gap-3">
+                  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month) => (
+                    <div key={month} className="text-center">
+                      <label className="block text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary mb-2">{month}</label>
+                      {isEditMode ? (
+                        <input
+                          type="text"
+                          value={editedKpi?.monthlyData?.[month] || ''}
+                          onChange={(e) => handleMonthlyDataChange(month, e.target.value)}
+                          className="w-full p-2 text-sm border border-light-border dark:border-dark-border rounded bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary text-center"
+                        />
+                      ) : (
+                        <div className="p-2 text-sm bg-light-bg dark:bg-dark-bg rounded text-light-text-primary dark:text-dark-text-primary text-center border border-light-border dark:border-dark-border">
+                          {selectedKpi.monthlyData?.[month] || '-'}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
               
@@ -1512,53 +1649,129 @@ const DataTable = ({ data }) => {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">คำอธิบาย</h3>
-                  <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                    {selectedKpi.details.description}
-                  </p>
+                  {isEditMode ? (
+                    <textarea
+                      value={editedKpi?.details?.description || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        details: { ...prev.details, description: e.target.value }
+                      }))}
+                      rows="3"
+                      className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                      {selectedKpi.details.description}
+                    </p>
+                  )}
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">วัตถุประสงค์</h3>
-                  <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                    {selectedKpi.details.objective}
-                  </p>
+                  {isEditMode ? (
+                    <textarea
+                      value={editedKpi?.details?.objective || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        details: { ...prev.details, objective: e.target.value }
+                      }))}
+                      rows="3"
+                      className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                      {selectedKpi.details.objective}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">วิธีการวัด</h3>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                      {selectedKpi.details.methodology}
-                    </p>
+                    {isEditMode ? (
+                      <textarea
+                        value={editedKpi?.details?.methodology || ''}
+                        onChange={(e) => setEditedKpi(prev => ({
+                          ...prev,
+                          details: { ...prev.details, methodology: e.target.value }
+                        }))}
+                        rows="3"
+                        className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                      />
+                    ) : (
+                      <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                        {selectedKpi.details.methodology}
+                      </p>
+                    )}
                   </div>
                   
                   <div>
                     <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">ความถี่ในการวัด</h3>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                      {selectedKpi.details.frequency}
-                    </p>
+                    {isEditMode ? (
+                      <input
+                        type="text"
+                        value={editedKpi?.details?.frequency || ''}
+                        onChange={(e) => setEditedKpi(prev => ({
+                          ...prev,
+                          details: { ...prev.details, frequency: e.target.value }
+                        }))}
+                        className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                      />
+                    ) : (
+                      <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                        {selectedKpi.details.frequency}
+                      </p>
+                    )}
                   </div>
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">ผู้รับผิดชอบ</h3>
-                  <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                    {selectedKpi.details.responsible}
-                  </p>
+                  {isEditMode ? (
+                    <input
+                      type="text"
+                      value={editedKpi?.details?.responsible || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        details: { ...prev.details, responsible: e.target.value }
+                      }))}
+                      className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                      {selectedKpi.details.responsible}
+                    </p>
+                  )}
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">แผนการปรับปรุง</h3>
-                  <ul className="space-y-2">
-                    {selectedKpi.details.improvementActions.map((action, index) => (
-                      <li key={index} className="flex items-start">
-                        <span className="inline-block w-2 h-2 bg-brand-primary rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                        <span className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                          {action}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  {isEditMode ? (
+                    <textarea
+                      value={editedKpi?.details?.improvementActions?.join('\n') || ''}
+                      onChange={(e) => setEditedKpi(prev => ({
+                        ...prev,
+                        details: {
+                          ...prev.details,
+                          improvementActions: e.target.value.split('\n').filter(action => action.trim())
+                        }
+                      }))}
+                      rows="4"
+                      placeholder="แต่ละบรรทัดคือแผนการปรับปรุงหนึ่งข้อ"
+                      className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
+                    />
+                  ) : (
+                    <ul className="space-y-2">
+                      {selectedKpi.details.improvementActions.map((action, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="inline-block w-2 h-2 bg-brand-primary rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                          <span className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                            {action}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>
@@ -3121,6 +3334,13 @@ const App = () => {
                     icon: getKpiIcon(String(row[1] || 'Untitled KPI')),
                     color: kpiData[index % kpiData.length].color,
                 });
+                // เก็บข้อมูลรายเดือน
+                const monthlyData = {};
+                monthCols.forEach((month, monthIndex) => {
+                    const monthValue = row[4 + monthIndex];
+                    monthlyData[month] = monthValue ? String(monthValue) : 'N/A';
+                });
+                
                 newTableRows.push({
                     kpi: {
                         title: String(row[1] || 'Untitled KPI'),
@@ -3129,6 +3349,7 @@ const App = () => {
                     target: String(row[2] || 'N/A'),
                     score: score,
                     result: result,
+                    monthlyData: monthlyData,
                 });
             });
             const firstKpiRow = rows[0];
