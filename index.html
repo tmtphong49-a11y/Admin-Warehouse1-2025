@@ -704,6 +704,31 @@ const TrashIcon = (props) => (
       <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
 );
+const ForkliftIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h6m0 0V8a2 2 0 0 1 2-2h4m-6 6v6m0-6h6m0 0V8m0 4v6m0-6h4l2 2v4m-2 0a2 2 0 1 1-4 0m4 0a2 2 0 1 1-4 0m-8 0a2 2 0 1 1-4 0m4 0a2 2 0 1 1-4 0" />
+    </svg>
+);
+const LeafIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c4.97 0 9 4.03 9 9 0 2.5-1.02 4.77-2.67 6.41C16.68 20.06 14.41 21 12 21c-2.5 0-4.77-1.02-6.41-2.67C3.94 16.68 3 14.41 3 12c0-4.97 4.03-9 9-9zm0 0c-2.5 0-4.77 1.02-6.41 2.67C3.94 7.32 3 9.59 3 12" />
+    </svg>
+);
+const MedicalBagIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h7.5m-7.5 0V5.25A2.25 2.25 0 0 1 10.5 3h3A2.25 2.25 0 0 1 15.75 5.25v1.5m-7.5 0v12A2.25 2.25 0 0 0 10.5 21h3a2.25 2.25 0 0 0 2.25-2.25v-12m-7.5 0h7.5M12 9v6m-3-3h6" />
+    </svg>
+);
+const BookIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25A8.967 8.967 0 0 1 18 3.75c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+    </svg>
+);
+const StairsIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h4v-4h4v-4h4v-4h4V5h2M9 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 0v2l-1 1h-1l-1-1v-1l1-1h1l1 1z" />
+    </svg>
+);
 // ===================================================
 // END: components/icons/Icons.tsx
 // ===================================================
@@ -880,6 +905,50 @@ const modifySpecificKpiScore = (title, originalScore) => {
     // ถ้าไม่ใช่ KPI ที่ต้องแก้ไข ให้ใช้ฟังก์ชันเดิม
     return formatScoreAsPercentage(originalScore);
 };
+
+// ฟังก์ชันกำหนดไอคอนสำหรับ KPI แต่ละตัว
+const getKpiIcon = (title) => {
+    const titleLower = String(title).toLowerCase();
+    
+    // KPI #1: Availability of forklifts - รถโฟล์คลิฟท์
+    if (titleLower.includes('availability') && titleLower.includes('forklift') || 
+        titleLower.includes('ความพร้อมของรถยก') || 
+        titleLower.includes('avaliability')) {
+        return 'ForkliftIcon';
+    }
+    
+    // KPI #2: Carbon Emission - ใบไม้สีเขียว
+    if (titleLower.includes('initiative') && titleLower.includes('carbon') || 
+        titleLower.includes('โครงการลดการปล่อยก๊าซคาร์บอน') ||
+        titleLower.includes('carbon') && titleLower.includes('emission')) {
+        return 'LeafIcon';
+    }
+    
+    // KPI #3: IFR accident rate - กระเป๋าพยาบาล
+    if (titleLower.includes('อัตราการเกิดอุบัติเหตุ') && titleLower.includes('ifr') || 
+        titleLower.includes('ifr') && titleLower.includes('2024') ||
+        titleLower.includes('accident') && titleLower.includes('ifr')) {
+        return 'MedicalBagIcon';
+    }
+    
+    // KPI #4: Lean management - หนังสือ
+    if (titleLower.includes('lean') && titleLower.includes('management') || 
+        titleLower.includes('กำหนดแผนพัฒนา') ||
+        titleLower.includes('lean mamagement system')) {
+        return 'BookIcon';
+    }
+    
+    // KPI #5: IDP Implementation - คนก้าวขึ้นบันได
+    if (titleLower.includes('idp') && titleLower.includes('implementation') || 
+        titleLower.includes('idp implementation succeed g4-g7') ||
+        titleLower.includes('โดยให้พนักงานในแผนก')) {
+        return 'StairsIcon';
+    }
+    
+    // ถ้าไม่ตรงกับ KPI ที่กำหนด ให้ใช้ไอคอนเริ่มต้น
+    return 'ChartBarIcon';
+};
+
 const workloadData = [
     {
         product: 'Raw Material',
@@ -1077,6 +1146,11 @@ const IconComponent = ({ name, className }) => {
         case 'ClockIcon': return <ClockIcon className={className} />;
         case 'ClipboardDocumentCheckIcon': return <ClipboardDocumentCheckIcon className={className} />;
         case 'ExclamationTriangleIcon': return <ExclamationTriangleIcon className={className} />;
+        case 'ForkliftIcon': return <ForkliftIcon className={className} />;
+        case 'LeafIcon': return <LeafIcon className={className} />;
+        case 'MedicalBagIcon': return <MedicalBagIcon className={className} />;
+        case 'BookIcon': return <BookIcon className={className} />;
+        case 'StairsIcon': return <StairsIcon className={className} />;
         default: return null;
     }
 };
@@ -2423,11 +2497,11 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
             />
             <button 
                 onClick={handleUploadClick}
-                className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                className="flex items-center justify-center bg-brand-primary text-white font-semibold p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
                 aria-label="Upload KPI data file"
+                title="อัปโหลดข้อมูล KPI"
             >
                 <ArrowUpTrayIcon className="h-5 w-5" />
-                <span className='hidden sm:inline'>{t('uploadKpiData')}</span>
             </button>
           </>
         )}
@@ -2448,21 +2522,19 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
         </button>
         <button
           onClick={onLoadFromFirestore}
-          className="flex items-center gap-2 bg-green-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-green-700 transition-colors duration-300"
+          className="flex items-center justify-center bg-green-600 text-white font-semibold p-3 rounded-lg hover:bg-green-700 transition-colors duration-300"
           aria-label="โหลดข้อมูลจาก Firestore"
           title="โหลดข้อมูลล่าสุดจาก Firestore"
         >
           <ArrowPathIcon className="h-5 w-5" />
-          <span className='hidden sm:inline'>โหลดข้อมูล</span>
         </button>
         <button
           onClick={onClearData}
-          className="flex items-center gap-2 bg-red-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-red-700 transition-colors duration-300"
+          className="flex items-center justify-center bg-red-600 text-white font-semibold p-3 rounded-lg hover:bg-red-700 transition-colors duration-300"
           aria-label="ลบข้อมูลทั้งหมดจาก Firestore"
           title="ลบข้อมูลทั้งหมดจาก Firestore"
         >
           <TrashIcon className="h-5 w-5" />
-          <span className='hidden sm:inline'>ลบข้อมูล</span>
         </button>
         <button
           onClick={onShareReport}
@@ -2806,7 +2878,7 @@ const App = () => {
                     target: String(row[2] || 'N/A'),
                     trend: result,
                     trendDirection: result.toUpperCase() === 'PASS' ? 'up' : 'down',
-                    icon: kpiData[index % kpiData.length].icon,
+                    icon: getKpiIcon(String(row[1] || 'Untitled KPI')),
                     color: kpiData[index % kpiData.length].color,
                 });
                 newTableRows.push({
