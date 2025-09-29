@@ -174,6 +174,89 @@ const getFromFirestore = async (collectionName) => {
   }
 };
 
+// ฟังก์ชันโหลดข้อมูลล่าสุดจาก Firestore
+const loadLatestDataFromFirestore = async () => {
+  try {
+    console.log('🔄 Loading latest data from Firestore...');
+    
+    // โหลดข้อมูล KPI ล่าสุด
+    const kpiData = await getFromFirestore('kpi_reports');
+    if (kpiData.length > 0) {
+      const latestKpi = kpiData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestKpi.data) {
+        setKpis(latestKpi.data.kpis || []);
+        setChartData(latestKpi.data.chartData || []);
+        setTableRows(latestKpi.data.tableRows || []);
+        console.log('✅ Loaded latest KPI data');
+      }
+    }
+
+    // โหลดข้อมูล Consumables ล่าสุด
+    const consumablesData = await getFromFirestore('consumables_reports');
+    if (consumablesData.length > 0) {
+      const latestConsumables = consumablesData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestConsumables.data) {
+        setConsumablesTableData(latestConsumables.data.tableData || []);
+        setConsumablesKpis(latestConsumables.data.kpis || []);
+        setConsumablesChartData(latestConsumables.data.chartData || []);
+        console.log('✅ Loaded latest Consumables data');
+      }
+    }
+
+    // โหลดข้อมูล OT ล่าสุด
+    const otData = await getFromFirestore('ot_reports');
+    if (otData.length > 0) {
+      const latestOt = otData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestOt.data) {
+        setOtTableData(latestOt.data.tableData || []);
+        setOtKpis(latestOt.data.kpis || []);
+        setOtChartData(latestOt.data.chartData || []);
+        console.log('✅ Loaded latest OT data');
+      }
+    }
+
+    // โหลดข้อมูล Leave ล่าสุด
+    const leaveData = await getFromFirestore('leave_reports');
+    if (leaveData.length > 0) {
+      const latestLeave = leaveData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestLeave.data) {
+        setLeaveTableData(latestLeave.data.tableData || []);
+        setLeaveKpis(latestLeave.data.kpis || []);
+        setLeaveChartData(latestLeave.data.chartData || []);
+        console.log('✅ Loaded latest Leave data');
+      }
+    }
+
+    // โหลดข้อมูล Accident ล่าสุด
+    const accidentData = await getFromFirestore('accident_reports');
+    if (accidentData.length > 0) {
+      const latestAccident = accidentData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestAccident.data) {
+        setAccidentTableData(latestAccident.data.tableData || []);
+        setAccidentKpis(latestAccident.data.kpis || []);
+        setAccidentChartData(latestAccident.data.chartData || []);
+        console.log('✅ Loaded latest Accident data');
+      }
+    }
+
+    // โหลดข้อมูล Workload ล่าสุด
+    const workloadData = await getFromFirestore('workload_reports');
+    if (workloadData.length > 0) {
+      const latestWorkload = workloadData.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+      if (latestWorkload.data) {
+        setWorkloadReportData(latestWorkload.data.data || []);
+        console.log('✅ Loaded latest Workload data');
+      }
+    }
+
+    console.log('🎉 Finished loading all latest data from Firestore');
+    return true;
+  } catch (error) {
+    console.error('❌ Error loading data from Firestore:', error);
+    return false;
+  }
+};
+
 
 // ===================================================
 // START: i18n/translations.ts
@@ -536,6 +619,11 @@ const ShareIcon = (props) => (
 const ArrowDownTrayIcon = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>
+);
+const ArrowPathIcon = (props) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
     </svg>
 );
 // ===================================================
@@ -2197,6 +2285,27 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
           <ArrowDownTrayIcon className="h-6 w-6" />
         </button>
         <button
+          onClick={async () => {
+            try {
+              const loaded = await loadLatestDataFromFirestore();
+              if (loaded) {
+                alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว');
+              } else {
+                alert('⚠️ ไม่พบข้อมูลใน Firestore หรือเกิดข้อผิดพลาด');
+              }
+            } catch (error) {
+              console.error('Error loading from Firestore:', error);
+              alert('❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message);
+            }
+          }}
+          className="flex items-center gap-2 bg-green-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-green-700 transition-colors duration-300"
+          aria-label="โหลดข้อมูลจาก Firestore"
+          title="โหลดข้อมูลล่าสุดจาก Firestore"
+        >
+          <ArrowPathIcon className="h-5 w-5" />
+          <span className='hidden sm:inline'>โหลดข้อมูล</span>
+        </button>
+        <button
           onClick={onShareReport}
           className="text-light-text-secondary dark:text-dark-text-secondary hover:text-light-text-primary dark:hover:text-dark-text-primary transition-colors"
           aria-label={t('shareReport')}
@@ -2325,23 +2434,59 @@ const App = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await mockApi.getData();
-        setKpis(data.kpiData.kpis);
-        setChartData(data.kpiData.chartData);
-        setTableRows(data.kpiData.tableRows);
-        setConsumablesTableData(data.consumablesData.tableData);
-        setConsumablesKpis(data.consumablesData.kpis);
-        setConsumablesChartData(data.consumablesData.chartData);
-        setOtTableData(data.otData.tableData);
-        setOtKpis(data.otData.kpis);
-        setOtChartData(data.otData.chartData);
-        setLeaveTableData(data.leaveData.tableData);
-        setLeaveKpis(data.leaveData.kpis);
-        setLeaveChartData(data.leaveData.chartData);
-        setAccidentTableData(data.accidentData.tableData);
-        setAccidentKpis(data.accidentData.kpis);
-        setAccidentChartData(data.accidentData.chartData);
-        setWorkloadReportData(data.workloadData.data);
+        // รอให้ Firebase เชื่อมต่อเสร็จก่อน
+        let attempts = 0;
+        while (!firebaseConnected && attempts < 10) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+        }
+
+        if (firebaseConnected) {
+          // ลองโหลดข้อมูลจาก Firestore ก่อน
+          const firestoreLoaded = await loadLatestDataFromFirestore();
+          
+          if (!firestoreLoaded) {
+            // ถ้าโหลดจาก Firestore ไม่ได้ ให้โหลดจาก mockApi แทน
+            console.log('🔄 Fallback to loading mock data...');
+            const data = await mockApi.getData();
+            setKpis(data.kpiData.kpis);
+            setChartData(data.kpiData.chartData);
+            setTableRows(data.kpiData.tableRows);
+            setConsumablesTableData(data.consumablesData.tableData);
+            setConsumablesKpis(data.consumablesData.kpis);
+            setConsumablesChartData(data.consumablesData.chartData);
+            setOtTableData(data.otData.tableData);
+            setOtKpis(data.otData.kpis);
+            setOtChartData(data.otData.chartData);
+            setLeaveTableData(data.leaveData.tableData);
+            setLeaveKpis(data.leaveData.kpis);
+            setLeaveChartData(data.leaveData.chartData);
+            setAccidentTableData(data.accidentData.tableData);
+            setAccidentKpis(data.accidentData.kpis);
+            setAccidentChartData(data.accidentData.chartData);
+            setWorkloadReportData(data.workloadData.data);
+          }
+        } else {
+          // ถ้า Firebase ไม่เชื่อมต่อ ให้โหลด mock data
+          console.log('🔄 Firebase not connected, loading mock data...');
+          const data = await mockApi.getData();
+          setKpis(data.kpiData.kpis);
+          setChartData(data.kpiData.chartData);
+          setTableRows(data.kpiData.tableRows);
+          setConsumablesTableData(data.consumablesData.tableData);
+          setConsumablesKpis(data.consumablesData.kpis);
+          setConsumablesChartData(data.consumablesData.chartData);
+          setOtTableData(data.otData.tableData);
+          setOtKpis(data.otData.kpis);
+          setOtChartData(data.otData.chartData);
+          setLeaveTableData(data.leaveData.tableData);
+          setLeaveKpis(data.leaveData.kpis);
+          setLeaveChartData(data.leaveData.chartData);
+          setAccidentTableData(data.accidentData.tableData);
+          setAccidentKpis(data.accidentData.kpis);
+          setAccidentChartData(data.accidentData.chartData);
+          setWorkloadReportData(data.workloadData.data);
+        }
       } catch (error) {
         console.error("Failed to fetch initial data:", error);
         alert("Could not load dashboard data. Please refresh the page.");
