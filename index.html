@@ -175,9 +175,18 @@ const getFromFirestore = async (collectionName) => {
 };
 
 // ฟังก์ชันโหลดข้อมูลล่าสุดจาก Firestore
-const loadLatestDataFromFirestore = async () => {
+const loadLatestDataFromFirestore = async (stateSetters) => {
   try {
     console.log('🔄 Loading latest data from Firestore...');
+    
+    const {
+      setKpis, setChartData, setTableRows,
+      setConsumablesTableData, setConsumablesKpis, setConsumablesChartData,
+      setOtTableData, setOtKpis, setOtChartData,
+      setLeaveTableData, setLeaveKpis, setLeaveChartData,
+      setAccidentTableData, setAccidentKpis, setAccidentChartData,
+      setWorkloadReportData
+    } = stateSetters;
     
     // โหลดข้อมูล KPI ล่าสุด
     const kpiData = await getFromFirestore('kpi_reports');
@@ -2203,7 +2212,7 @@ const Sidebar = ({ activePage, onNavigate, isOpen, onClose }) => {
 // ===================================================
 // START: components/Header.tsx
 // ===================================================
-const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport }) => {
+const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onShareReport, onLoadReport, onLoadFromFirestore }) => {
   const { t, language, toggleLanguage } = useTranslation();
   const fileInputRef = useRef(null);
   const loadReportInputRef = useRef(null);
@@ -2285,19 +2294,7 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
           <ArrowDownTrayIcon className="h-6 w-6" />
         </button>
         <button
-          onClick={async () => {
-            try {
-              const loaded = await loadLatestDataFromFirestore();
-              if (loaded) {
-                alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว');
-              } else {
-                alert('⚠️ ไม่พบข้อมูลใน Firestore หรือเกิดข้อผิดพลาด');
-              }
-            } catch (error) {
-              console.error('Error loading from Firestore:', error);
-              alert('❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message);
-            }
-          }}
+          onClick={onLoadFromFirestore}
           className="flex items-center gap-2 bg-green-600 text-white font-semibold px-3 py-2 rounded-lg hover:bg-green-700 transition-colors duration-300"
           aria-label="โหลดข้อมูลจาก Firestore"
           title="โหลดข้อมูลล่าสุดจาก Firestore"
@@ -2431,6 +2428,34 @@ const App = () => {
     localStorage.setItem('activePage', JSON.stringify(activePage));
   }, [activePage]);
 
+  // ฟังก์ชัน wrapper สำหรับโหลดข้อมูลจาก Firestore
+  const loadDataFromFirestore = async () => {
+    const stateSetters = {
+      setKpis, setChartData, setTableRows,
+      setConsumablesTableData, setConsumablesKpis, setConsumablesChartData,
+      setOtTableData, setOtKpis, setOtChartData,
+      setLeaveTableData, setLeaveKpis, setLeaveChartData,
+      setAccidentTableData, setAccidentKpis, setAccidentChartData,
+      setWorkloadReportData
+    };
+    return await loadLatestDataFromFirestore(stateSetters);
+  };
+
+  // ฟังก์ชันสำหรับปุ่ม "โหลดข้อมูล" ใน Header
+  const handleLoadFromFirestore = async () => {
+    try {
+      const loaded = await loadDataFromFirestore();
+      if (loaded) {
+        alert('✅ โหลดข้อมูลล่าสุดจาก Firestore เรียบร้อยแล้ว');
+      } else {
+        alert('⚠️ ไม่พบข้อมูลใน Firestore หรือเกิดข้อผิดพลาด');
+      }
+    } catch (error) {
+      console.error('Error loading from Firestore:', error);
+      alert('❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: ' + error.message);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -2443,7 +2468,7 @@ const App = () => {
 
         if (firebaseConnected) {
           // ลองโหลดข้อมูลจาก Firestore ก่อน
-          const firestoreLoaded = await loadLatestDataFromFirestore();
+          const firestoreLoaded = await loadDataFromFirestore();
           
           if (!firestoreLoaded) {
             // ถ้าโหลดจาก Firestore ไม่ได้ ให้โหลดจาก mockApi แทน
@@ -3211,6 +3236,7 @@ const App = () => {
             onMenuClick={() => setIsSidebarOpen(true)}
             onShareReport={handleShareReport}
             onLoadReport={handleLoadReport}
+            onLoadFromFirestore={handleLoadFromFirestore}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-light-bg dark:bg-dark-bg p-6 lg:p-8">
           {renderContent()}
