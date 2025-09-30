@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -572,6 +573,11 @@ const ArrowTrendingDownIcon = (props) => (
 const ArrowTrendingUpIcon = (props) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6 9 12.75l4.286-4.286a11.948 11.948 0 0 1 5.814 5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941" />
+  </svg>
+);
+const CheckCircleIcon = (props) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
   </svg>
 );
 const BellIcon = (props) => (
@@ -1180,7 +1186,7 @@ const KPICard = ({ title, value, target, trend, trendDirection = 'neutral', icon
   const TrendIcon = () => {
     switch (trendDirection) {
       case 'up':
-        return <ArrowTrendingUpIcon className="h-5 w-5 text-brand-success" />;
+        return <CheckCircleIcon className="h-5 w-5 text-brand-success" />;
       case 'down':
         return <ArrowTrendingDownIcon className="h-5 w-5 text-brand-danger" />;
       default:
