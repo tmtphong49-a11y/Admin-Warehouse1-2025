@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -1386,7 +1387,12 @@ const DataTable = ({ data }) => {
   const handleRowClick = (row) => {
     setSelectedKpi({
       ...row,
-      details: getKpiDetails(row.kpi.title)
+      // ใช้ข้อมูลจากการอัพโหลดหากมี หรือใช้ข้อมูลเริ่มต้น
+      description: row.description || getKpiDetails(row.kpi.title).description,
+      objective: row.objective || getKpiDetails(row.kpi.title).objective,
+      measurementMethod: row.measurementMethod || getKpiDetails(row.kpi.title).methodology,
+      responsible: row.responsible || getKpiDetails(row.kpi.title).responsible,
+      improvementPlan: row.improvementPlan || getKpiDetails(row.kpi.title).improvementActions.join('\n')
     });
     setIsModalOpen(true);
   };
@@ -1447,10 +1453,11 @@ const DataTable = ({ data }) => {
         <table className="w-full text-left">
           <thead className="sticky top-0 bg-light-card dark:bg-dark-card z-10">
             <tr className="border-b border-light-border dark:border-dark-border">
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('kpi')}</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">{t('target')}</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('score')}</th>
-              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">{t('result')}</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">KPI NO.</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">KPI Title</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase">Target</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Score</th>
+              <th className="p-4 text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary uppercase text-right">Result</th>
             </tr>
           </thead>
           <tbody className='divide-y divide-light-border dark:divide-dark-border'>
@@ -1462,9 +1469,11 @@ const DataTable = ({ data }) => {
                 onClick={() => handleRowClick(row)}
                 title="คลิกเพื่อดูรายละเอียดเพิ่มเติม"
               >
+                <td className="p-4">
+                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.kpiNo || 'N/A'}</div>
+                </td>
                 <td className="p-4 max-w-xs">
                   <div className="font-medium text-light-text-primary dark:text-dark-text-primary truncate" title={row.kpi.title}>{row.kpi.title}</div>
-                  <div className="text-sm text-light-text-secondary dark:text-dark-text-secondary truncate" title={row.kpi.measurement}>{row.kpi.measurement}</div>
                 </td>
                 <td className="p-4">
                     <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.target}</div>
@@ -1483,7 +1492,7 @@ const DataTable = ({ data }) => {
               ))
             ) : (
               <tr>
-                <td colSpan={4} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
+                <td colSpan={5} className="text-center p-8 text-light-text-secondary dark:text-dark-text-secondary">
                   {t('noResultsFound')}
                 </td>
               </tr>
@@ -1652,17 +1661,17 @@ const DataTable = ({ data }) => {
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">คำอธิบาย</h3>
                   {isEditMode ? (
                     <textarea
-                      value={editedKpi?.details?.description || ''}
+                      value={editedKpi?.description || ''}
                       onChange={(e) => setEditedKpi(prev => ({
                         ...prev,
-                        details: { ...prev.details, description: e.target.value }
+                        description: e.target.value
                       }))}
                       rows="3"
                       className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
                     />
                   ) : (
                     <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                      {selectedKpi.details.description}
+                      {selectedKpi.description || 'ไม่มีข้อมูล'}
                     </p>
                   )}
                 </div>
@@ -1671,17 +1680,17 @@ const DataTable = ({ data }) => {
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">วัตถุประสงค์</h3>
                   {isEditMode ? (
                     <textarea
-                      value={editedKpi?.details?.objective || ''}
+                      value={editedKpi?.objective || ''}
                       onChange={(e) => setEditedKpi(prev => ({
                         ...prev,
-                        details: { ...prev.details, objective: e.target.value }
+                        objective: e.target.value
                       }))}
                       rows="3"
                       className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
                     />
                   ) : (
                     <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                      {selectedKpi.details.objective}
+                      {selectedKpi.objective || 'ไม่มีข้อมูล'}
                     </p>
                   )}
                 </div>
@@ -1691,87 +1700,57 @@ const DataTable = ({ data }) => {
                     <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">วิธีการวัด</h3>
                     {isEditMode ? (
                       <textarea
-                        value={editedKpi?.details?.methodology || ''}
+                        value={editedKpi?.measurementMethod || ''}
                         onChange={(e) => setEditedKpi(prev => ({
                           ...prev,
-                          details: { ...prev.details, methodology: e.target.value }
+                          measurementMethod: e.target.value
                         }))}
                         rows="3"
                         className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
                       />
                     ) : (
                       <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                        {selectedKpi.details.methodology}
+                        {selectedKpi.measurementMethod || 'ไม่มีข้อมูล'}
                       </p>
                     )}
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">ความถี่ในการวัด</h3>
+                    <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">ผู้รับผิดชอบ</h3>
                     {isEditMode ? (
                       <input
                         type="text"
-                        value={editedKpi?.details?.frequency || ''}
+                        value={editedKpi?.responsible || ''}
                         onChange={(e) => setEditedKpi(prev => ({
                           ...prev,
-                          details: { ...prev.details, frequency: e.target.value }
+                          responsible: e.target.value
                         }))}
                         className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
                       />
                     ) : (
                       <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                        {selectedKpi.details.frequency}
+                        {selectedKpi.responsible || 'ไม่มีข้อมูล'}
                       </p>
                     )}
                   </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">ผู้รับผิดชอบ</h3>
-                  {isEditMode ? (
-                    <input
-                      type="text"
-                      value={editedKpi?.details?.responsible || ''}
-                      onChange={(e) => setEditedKpi(prev => ({
-                        ...prev,
-                        details: { ...prev.details, responsible: e.target.value }
-                      }))}
-                      className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
-                    />
-                  ) : (
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                      {selectedKpi.details.responsible}
-                    </p>
-                  )}
                 </div>
                 
                 <div>
                   <h3 className="text-lg font-semibold text-light-text-primary dark:text-dark-text-primary mb-3">แผนการปรับปรุง</h3>
                   {isEditMode ? (
                     <textarea
-                      value={editedKpi?.details?.improvementActions?.join('\n') || ''}
+                      value={editedKpi?.improvementPlan || ''}
                       onChange={(e) => setEditedKpi(prev => ({
                         ...prev,
-                        details: {
-                          ...prev.details,
-                          improvementActions: e.target.value.split('\n').filter(action => action.trim())
-                        }
+                        improvementPlan: e.target.value
                       }))}
                       rows="4"
-                      placeholder="แต่ละบรรทัดคือแผนการปรับปรุงหนึ่งข้อ"
                       className="w-full p-3 border border-light-border dark:border-dark-border rounded-lg bg-white dark:bg-gray-700 text-light-text-primary dark:text-dark-text-primary"
                     />
                   ) : (
-                    <ul className="space-y-2">
-                      {selectedKpi.details.improvementActions.map((action, index) => (
-                        <li key={index} className="flex items-start">
-                          <span className="inline-block w-2 h-2 bg-brand-primary rounded-full mt-2 mr-3 flex-shrink-0"></span>
-                          <span className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
-                            {action}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                    <p className="text-light-text-secondary dark:text-dark-text-secondary leading-relaxed">
+                      {selectedKpi.improvementPlan || 'ไม่มีข้อมูล'}
+                    </p>
                   )}
                 </div>
               </div>
@@ -3323,19 +3302,32 @@ const App = () => {
             const newTableRows = [];
             const monthCols = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             rows.forEach((row, index) => {
-                if (!row || row.length < 18 || !row[1]) return;
+                if (!row || row.length < 22 || !row[1]) return;
+                
+                // ดึงข้อมูลจากคอลัมน์ตามลำดับใหม่
+                const kpiNo = row[0] ? String(row[0]) : 'N/A';
+                const kpiTitle = row[1] ? String(row[1]) : 'Untitled KPI';
+                const target = row[2] ? String(row[2]) : 'N/A';
+                const targetMeasurement = row[3] ? String(row[3]) : 'N/A';
                 const score = row[16] ? String(row[16]) : 'N/A';
                 const result = row[17] ? String(row[17]) : 'N/A';
+                const description = row[18] ? String(row[18]) : 'N/A';
+                const objective = row[19] ? String(row[19]) : 'N/A';
+                const measurementMethod = row[20] ? String(row[20]) : 'N/A';
+                const responsible = row[21] ? String(row[21]) : 'N/A';
+                const improvementPlan = row[22] ? String(row[22]) : 'N/A';
+                
                 newKpis.push({
-                    title: String(row[1] || 'Untitled KPI'),
-                    value: modifySpecificKpiScore(String(row[1] || 'Untitled KPI'), score),
-                    target: String(row[2] || 'N/A'),
+                    title: kpiTitle,
+                    value: modifySpecificKpiScore(kpiTitle, score),
+                    target: target,
                     trend: result,
                     trendDirection: result.toUpperCase() === 'PASS' ? 'up' : 'down',
-                    icon: getKpiIcon(String(row[1] || 'Untitled KPI')),
+                    icon: getKpiIcon(kpiTitle),
                     color: kpiData[index % kpiData.length].color,
                 });
-                // เก็บข้อมูลรายเดือน
+                
+                // เก็บข้อมูลรายเดือน (คอลัมน์ 4-15)
                 const monthlyData = {};
                 monthCols.forEach((month, monthIndex) => {
                     const monthValue = row[4 + monthIndex];
@@ -3343,14 +3335,20 @@ const App = () => {
                 });
                 
                 newTableRows.push({
+                    kpiNo: kpiNo,
                     kpi: {
-                        title: String(row[1] || 'Untitled KPI'),
-                        measurement: String(row[3] || ''),
+                        title: kpiTitle,
+                        measurement: targetMeasurement,
                     },
-                    target: String(row[2] || 'N/A'),
+                    target: target,
                     score: score,
                     result: result,
                     monthlyData: monthlyData,
+                    description: description,
+                    objective: objective,
+                    measurementMethod: measurementMethod,
+                    responsible: responsible,
+                    improvementPlan: improvementPlan,
                 });
             });
             const firstKpiRow = rows[0];
