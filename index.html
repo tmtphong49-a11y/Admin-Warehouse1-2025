@@ -1436,12 +1436,38 @@ const DataTable = ({ data }) => {
     };
   };
 
-  const handleRowClick = (row) => {
-    setSelectedKpi({
-      ...row,
-      details: getKpiDetails(row.kpi.title)
-    });
-    setIsModalOpen(true);
+  const handleRowClick = async (row) => {
+    try {
+      // โหลดข้อมูลล่าสุดจาก Firestore ก่อนเปิด modal
+      const kpiDetailsData = await getFromFirestore('kpi_details');
+      let updatedRow = { ...row };
+      
+      if (kpiDetailsData && kpiDetailsData.length > 0) {
+        const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
+        if (savedKpi && savedKpi.kpiData) {
+          updatedRow = {
+            ...row,
+            ...savedKpi.kpiData,
+            lastUpdated: savedKpi.updatedAt,
+            updatedBy: savedKpi.updatedBy
+          };
+        }
+      }
+      
+      setSelectedKpi({
+        ...updatedRow,
+        details: getKpiDetails(updatedRow.kpi.title)
+      });
+      setIsModalOpen(true);
+    } catch (error) {
+      console.error('Error loading latest KPI data:', error);
+      // ถ้าเกิดข้อผิดพลาด ให้แสดงข้อมูลเดิม
+      setSelectedKpi({
+        ...row,
+        details: getKpiDetails(row.kpi.title)
+      });
+      setIsModalOpen(true);
+    }
   };
 
   const closeModal = () => {
@@ -1470,7 +1496,7 @@ const DataTable = ({ data }) => {
       
       if (kpiDetailsData && kpiDetailsData.length > 0) {
         // อัปเดตข้อมูลที่มีอยู่ด้วยข้อมูลจาก Firestore
-        const updatedData = data.map(row => {
+        const updatedData = tableRows.map(row => {
           const savedKpi = kpiDetailsData.find(saved => saved.kpiTitle === row.kpi.title);
           if (savedKpi && savedKpi.kpiData) {
             return {
@@ -1482,6 +1508,9 @@ const DataTable = ({ data }) => {
           }
           return row;
         });
+        
+        // อัปเดตข้อมูลในตาราง
+        setTableRows(updatedData);
         
         // อัปเดต selectedKpi ถ้ามีการเลือกอยู่
         if (selectedKpi) {
@@ -1511,9 +1540,12 @@ const DataTable = ({ data }) => {
   const saveEdit = async () => {
     try {
       // อัปเดตข้อมูลในตาราง
-      const updatedData = data.map(row => 
+      const updatedData = tableRows.map(row => 
         row.kpi.title === selectedKpi.kpi.title ? editedKpi : row
       );
+      
+      // อัปเดต state ของตาราง
+      setTableRows(updatedData);
       
       // บันทึกข้อมูลไปยัง Firestore
       const saveData = {
