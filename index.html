@@ -1894,23 +1894,6 @@ const ConsumablesReport = ({ tableData, kpis, chartData, onFileUpload, theme }) 
     }, [tableData]);
     return (
         <div className="container mx-auto">
-             <div className="flex justify-end items-center mb-6">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-                <button
-                    onClick={handleUploadClick}
-                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                    aria-label="Upload Consumables Excel file"
-                >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>{t('uploadExcel')}</span>
-                </button>
-            </div>
             {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2138,23 +2121,6 @@ const OTReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
     }, [tableData]);
     return (
         <div className="container mx-auto">
-             <div className="flex justify-end items-center mb-6">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-                <button
-                    onClick={handleUploadClick}
-                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                    aria-label="Upload OT Excel file"
-                >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>{t('uploadExcel')}</span>
-                </button>
-            </div>
             {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2390,23 +2356,6 @@ const LeaveReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => {
     }, [tableData]);
     return (
         <div className="container mx-auto">
-             <div className="flex justify-end items-center mb-6">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-                <button
-                    onClick={handleUploadClick}
-                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                    aria-label="Upload Leave Excel file"
-                >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>{t('uploadExcel')}</span>
-                </button>
-            </div>
             {tableData.length > 0 ? (
                 <div className="flex flex-col gap-8">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2618,23 +2567,6 @@ const AccidentReport = ({ tableData, kpis, chartData, onFileUpload, theme }) => 
     );
     return (
         <div className="container mx-auto">
-             <div className="flex justify-end items-center mb-6">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-                <button
-                    onClick={handleUploadClick}
-                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                    aria-label="Upload Accident Excel file"
-                >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>{t('uploadExcel')}</span>
-                </button>
-            </div>
             {tableData.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-8">
@@ -2805,23 +2737,6 @@ const WorkloadReport = ({ data, theme, onFileUpload }) => {
 
     return (
         <div className="container mx-auto flex flex-col gap-8">
-            <div className="flex justify-end items-center">
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    className="hidden"
-                    accept=".xlsx, .xls"
-                />
-                <button
-                    onClick={handleUploadClick}
-                    className="flex items-center gap-2 bg-brand-primary text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                    aria-label="Upload Workload Excel file"
-                >
-                    <ArrowUpTrayIcon className="h-5 w-5" />
-                    <span>{t('uploadExcel')}</span>
-                </button>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {summaryKpis.map((kpi, index) => (
                     <KPICard
@@ -3025,25 +2940,6 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
             className="bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border rounded-lg pl-10 pr-4 py-2 text-light-text-primary dark:text-dark-text-primary focus:outline-none focus:ring-2 focus:ring-brand-primary"
           />
         </div>
-        {activePage === 'kpiReport' && (
-          <>
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                className="hidden"
-                accept=".xlsx, .xls"
-            />
-            <button 
-                onClick={handleUploadClick}
-                className="flex items-center justify-center bg-brand-primary text-white font-semibold p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
-                aria-label="Upload KPI data file"
-                title="อัปโหลดข้อมูล KPI"
-            >
-                <ArrowUpTrayIcon className="h-5 w-5" />
-            </button>
-          </>
-        )}
         <input
             type="file"
             ref={loadReportInputRef}
@@ -3067,11 +2963,30 @@ const Header = ({ onFileUpload, activePage, theme, toggleTheme, onMenuClick, onS
         >
           <ArrowPathIcon className="h-5 w-5" />
         </button>
+        {(activePage === 'kpiReport' || activePage === 'consumablesReport' || activePage === 'otReport' || activePage === 'leaveReport' || activePage === 'accidentReport' || activePage === 'workloadReport') && (
+          <>
+            <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept=".xlsx, .xls"
+            />
+            <button 
+                onClick={handleUploadClick}
+                className="flex items-center justify-center bg-brand-primary text-white font-semibold p-3 rounded-lg hover:bg-indigo-500 transition-colors duration-300"
+                aria-label="อัปโหลด Excel"
+                title="อัปโหลดไฟล์ Excel"
+            >
+                <ArrowUpTrayIcon className="h-5 w-5" />
+            </button>
+          </>
+        )}
         <button
           onClick={onClearData}
           className="flex items-center justify-center bg-red-600 text-white font-semibold p-3 rounded-lg hover:bg-red-700 transition-colors duration-300"
-          aria-label="ลบข้อมูลทั้งหมดจาก Firestore"
-          title="ลบข้อมูลทั้งหมดจาก Firestore"
+          aria-label="ลบข้อมูล"
+          title="ลบข้อมูลทั้งหมด"
         >
           <TrashIcon className="h-5 w-5" />
         </button>
@@ -4034,6 +3949,35 @@ const App = () => {
         reader.readAsBinaryString(file);
     };
 
+  // ฟังก์ชัน wrapper สำหรับอัปโหลดไฟล์ตาม activePage
+  const handleFileUploadByPage = (file) => {
+    if (!file) return;
+    
+    switch (activePage) {
+      case 'kpiReport':
+        handleDashboardFileUpload(file);
+        break;
+      case 'consumablesReport':
+        handleConsumablesFileUpload(file);
+        break;
+      case 'otReport':
+        handleOTFileUpload(file);
+        break;
+      case 'leaveReport':
+        handleLeaveFileUpload(file);
+        break;
+      case 'accidentReport':
+        handleAccidentFileUpload(file);
+        break;
+      case 'workloadReport':
+        handleWorkloadFileUpload(file);
+        break;
+      default:
+        alert('⚠️ ไม่สามารถอัปโหลดไฟล์ในหน้านี้ได้');
+        break;
+    }
+  };
+
   const renderContent = () => {
     switch (activePage) {
       case 'kpiReport':
@@ -4124,7 +4068,7 @@ const App = () => {
       <Sidebar activePage={activePage} onNavigate={handleNavigate} isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header 
-            onFileUpload={handleDashboardFileUpload} 
+            onFileUpload={handleFileUploadByPage} 
             activePage={activePage} 
             theme={theme} 
             toggleTheme={toggleTheme} 
