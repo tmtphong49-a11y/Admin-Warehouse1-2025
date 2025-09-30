@@ -1,6 +1,5 @@
 
 
-
 <!DOCTYPE html>
 <html lang="en" class="dark">
   <head>
@@ -423,7 +422,7 @@ const translations = {
     th: {
         // Sidebar
         'kpiReport': 'รายงาน KPI',
-        'consumablesReport': 'รายงานวัสดุสิ้นเปลือง',
+        'consumablesReport': 'วัสดุสิ้นเปลือง',
         'otReport': 'รายงาน OT',
         'leaveReport': 'รายงานการลา',
         'accidentReport': 'รายงานอุบัติเหตุ',
@@ -1474,7 +1473,7 @@ const DataTable = ({ data }) => {
                   <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.kpiNo || 'N/A'}</div>
                 </td>
                 <td className="p-4 max-w-xs">
-                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary truncate" title={row.kpi.title}>{row.kpi.title}</div>
+                  <div className="font-medium text-light-text-primary dark:text-dark-text-primary whitespace-normal break-words" title={row.kpi.title}>{row.kpi.title}</div>
                 </td>
                 <td className="p-4">
                     <div className="font-medium text-light-text-primary dark:text-dark-text-primary">{row.target}</div>
@@ -3162,38 +3161,87 @@ const App = () => {
   // ฟังก์ชันสำหรับปุ่ม "ลบข้อมูลทั้งหมด" ใน Header
   const handleClearAllData = async () => {
     try {
+      // แมประหว่างหน้ากับ collection และ state setters
+      const pageCollectionMap = {
+        kpiReport: {
+          collection: 'kpi_reports',
+          name: 'รายงาน KPI',
+          clearStates: () => {
+            setKpis([]);
+            setChartData([]);
+            setTableRows([]);
+          }
+        },
+        consumablesReport: {
+          collection: 'consumables_reports',
+          name: 'วัสดุสิ้นเปลือง',
+          clearStates: () => {
+            setConsumablesTableData([]);
+            setConsumablesKpis([]);
+            setConsumablesChartData([]);
+          }
+        },
+        otReport: {
+          collection: 'ot_reports',
+          name: 'รายงาน OT',
+          clearStates: () => {
+            setOtTableData([]);
+            setOtKpis([]);
+            setOtChartData([]);
+          }
+        },
+        leaveReport: {
+          collection: 'leave_reports',
+          name: 'รายงานการลา',
+          clearStates: () => {
+            setLeaveTableData([]);
+            setLeaveKpis([]);
+            setLeaveChartData([]);
+          }
+        },
+        accidentReport: {
+          collection: 'accident_reports',
+          name: 'รายงานอุบัติเหตุ',
+          clearStates: () => {
+            setAccidentTableData([]);
+            setAccidentKpis([]);
+            setAccidentChartData([]);
+          }
+        },
+        workloadReport: {
+          collection: 'workload_reports',
+          name: 'ปริมาณการทำงานต่อคน',
+          clearStates: () => {
+            setWorkloadReportData([]);
+          }
+        }
+      };
+
+      // หาข้อมูลของหน้าปัจจุบัน
+      const currentPage = pageCollectionMap[activePage];
+      
+      if (!currentPage) {
+        alert('⚠️ ไม่สามารถลบข้อมูลในหน้านี้ได้');
+        return;
+      }
+
       // ขอยืนยันจากผู้ใช้ก่อนลบ
       const confirmed = window.confirm(
-        '⚠️ คุณต้องการลบข้อมูลทั้งหมดใน Firestore หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้!'
+        `⚠️ คุณต้องการลบข้อมูลทั้งหมดของ "${currentPage.name}" หรือไม่?\n\nการกระทำนี้ไม่สามารถย้อนกลับได้!`
       );
       
       if (!confirmed) {
         return;
       }
 
-      const cleared = await clearAllFirestoreData();
+      // ลบข้อมูลจาก Firestore
+      const cleared = await clearFirestoreCollection(currentPage.collection);
       if (cleared) {
-        // ล้างข้อมูลใน state ด้วย
-        setKpis([]);
-        setChartData([]);
-        setTableRows([]);
-        setConsumablesTableData([]);
-        setConsumablesKpis([]);
-        setConsumablesChartData([]);
-        setOtTableData([]);
-        setOtKpis([]);
-        setOtChartData([]);
-        setLeaveTableData([]);
-        setLeaveKpis([]);
-        setLeaveChartData([]);
-        setAccidentTableData([]);
-        setAccidentKpis([]);
-        setAccidentChartData([]);
-        setWorkloadReportData([]);
-        
-        alert('✅ ลบข้อมูลทั้งหมดจาก Firestore เรียบร้อยแล้ว');
+        // ล้าง state ของหน้าปัจจุบัน
+        currentPage.clearStates();
+        alert(`✅ ข้อมูล "${currentPage.name}" ถูกลบเรียบร้อยแล้ว`);
       } else {
-        alert('⚠️ เกิดข้อผิดพลาดในการลบข้อมูล');
+        alert(`⚠️ ไม่สามารถลบข้อมูล "${currentPage.name}" ได้ อาจเกิดจากปัญหาด้านสิทธิ์การเข้าถึง`);
       }
     } catch (error) {
       console.error('Error clearing Firestore data:', error);
